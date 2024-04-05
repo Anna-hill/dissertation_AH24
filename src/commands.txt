@@ -1,0 +1,90 @@
+######################################################
+did not work on initial files:
+
+In linux:
+Making a DTM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/clipped_tiles/clipped_bonaly.txt
+-res 2 -epsg 27700 -DTM -float -output bonaly_DTM
+
+Making a DSM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/clipped_tiles/clipped_bonaly.txt
+ -res 2 -epsg 27700 -height -float -output bonaly_DSM
+#########################################################
+
+Trying to do height above ground???
+in Dos
+G:\LAStools\bin\lasheight.exe -i Z:\s2559258\Bonaly\clipped_tiles\*.las -odir Z:\s2559258\Bonaly\ground_2603
+
+Classifiying?
+G:\LAStools\bin\lasclassify.exe -i Z:\s2559258\Bonaly\ground_2603\*.las -odir Z:\s2559258\Bonaly\classified_1 -step 4 -planar 0.1 -rugged 0.4 -ground_offset 2
+
+DTM/DSM on classified:
+
+########################################
+
+Unclipped files:
+
+Unzip into las
+G:\LAStools\bin\laszip.exe -i Z:\s2559258\Bonaly\raw_laz\*.laz -odir Z:\s2559258\Bonaly\raw_las -olas
+
+height above ground
+in Dos
+G:\LAStools\bin\lasheight.exe -i Z:\s2559258\Bonaly\raw_las\*.las -odir Z:\s2559258\Bonaly\full_ground_2603
+
+Classifiying?
+G:\LAStools\bin\lasclassify.exe -i Z:\s2559258\Bonaly\full_ground_2603\*.las -odir Z:\s2559258\Bonaly\full_classified_1 -step 4 -planar 0.1 -rugged 0.4 -ground_offset 2
+
+In linux:
+Making a DTM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/full_classified_1/class_bonaly.txt -res 0.5 -epsg 27700 -DTM -float -output bonaly_DTM
+
+Making a DSM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/full_classified_1/class_bonaly.txt -res 0.5 -epsg 27700 -height -float -output bonaly_DSM
+
+res 2m
+Making a DTM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/full_classified_1/class_bonaly.txt -res 2 -epsg 27700 -DTM -float -output bonaly_DTM_2m
+
+Making a DSM:
+mapLidar -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/full_classified_1/class_bonaly.txt -res 2 -epsg 27700 -height -float -output bonaly_DSM_2m
+
+Simulating waveforms:
+
+test for 1 waveform?
+
+gediRat -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las -coord 3.266817 55.877935 -output waveform1.txt
+
+
+
+gediRat -inList exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/raw_las/raw_las.txt -output bonaly.h5 -hdf -ground gridStep 25 -gridBound 665697.0768 666632.639 320752.6395 321370.4455 -checkCover
+
+gediRat -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/raw_las/raw_las.txt -output bonaly.h5 -hdf -ground gridStep 25 -gridBound 320752.6395 321370.4455 665697.0768 666632.639 -checkCover
+
+
+SH new gediat suggestion
+gediRat -inList /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/raw_las/raw_las.txt -ground -gridBound 320752.6395 321370.4455 665697.0768 666632.639 -gridStep 20 -output grid.h5 -hdf
+
+
+GediHandler
+(in python)
+>>import h5py
+>>> filename= "/exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5"
+>>> f=h5py.File(filename,'r') 
+>>> list(f)
+>>> list(f['LAT0'])
+
+
+Plotting
+into PNG:
+python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
+
+python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
+
+Into CSV:
+python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --writeWaves --outRoot plots
+
+
+
+converting sim waves to pts
+
+gediMetric -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/grid.h5 -outRoot Points -photonCount -nPhotons $n
