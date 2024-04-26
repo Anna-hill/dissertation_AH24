@@ -7,6 +7,7 @@ import argparse
 import rasterio
 from pyproj import Transformer
 from gediHandler import gediData
+from rasterTools_EM import writeToFile
 
 
 def gediCommands():
@@ -70,20 +71,59 @@ if __name__ == "__main__":
     srtm_array = srtm.read(1)
     slope_array = slope.read(1)
     ndvi_array = ndvi.read(1)
-    # plt.scatter(slope_array, ndvi_array)
-    plt.imshow(ndvi_array)
-    plt.show()
+    # plt.imshow(ndvi_array)
+    # plt.show()
 
-    lon = 321352.6395
-    lat = 666627.0768
+    # extract coords from sim waves file
+    lon = gedi.lon
+    nX = len(lon)
+    minX = np.min(lon)
+    lat = gedi.lat
+    nY = len(lat)
+    maxY = np.max(lat)
+    ndvi_vals = []
+    slope_vals = []
 
+    # rds = rasterio.open("data/ndvi_bonaly.tif")
+
+    # make this into a function ?
     with rasterio.open("data/ndvi_bonaly.tif") as rds:
         # convert coordinate to raster projection
         transformer = Transformer.from_crs("EPSG:27700", rds.crs, always_xy=True)
-        xx, yy = transformer.transform(lon, lat)
+        for index, item in enumerate(lon):
+            xx, yy = transformer.transform(item, lat[index])
 
-        # get value from grid
-        value = list(rds.sample([(xx, yy)]))[0]
-        print(f"ndvi value at {xx},{yy} = {value}")
+            # get value from grid
+            value = list(rds.sample([(xx, yy)]))[0]
+            print(f"ndvi value at {xx},{yy} = {value}")
+            ndvi_vals.append(value)
 
         # https://gis.stackexchange.com/questions/358036/extracting-data-from-a-raster
+
+    with rasterio.open("data/slope_SRTM.tif") as rds:
+        # convert coordinate to raster projection
+        transformer = Transformer.from_crs("EPSG:27700", rds.crs, always_xy=True)
+        for index, item in enumerate(lon):
+            xx, yy = transformer.transform(item, lat[index])
+
+            # get value from grid
+            value = list(rds.sample([(xx, yy)]))[0]
+            print(f"slope value at {xx},{yy} = {value}")
+            slope_vals.append(value)
+
+    plt.scatter(ndvi_vals, slope_vals)
+    plt.show()
+
+    # this does not work because ndvi_vals is 1d array
+    # therefore it does not have a shape?
+    writeToFile(
+        data=ndvi_vals,
+        minX=minX,
+        maxY=maxY,
+        nX=nX,
+        nY=nY,
+        res=30,
+        epsg=27700,
+        outFile="ndvi_footprints",
+        noData=-999.0,
+    )
