@@ -503,6 +503,10 @@ class gediData(object):
           text_file (str): gedi_metric outpult file
         """
         self.df = pd.read_csv(text_file, delimiter=" ", header=0)
+        # create 2d array from info in text file.
+        # Each row is list, array is list of these
+        self.df1 = np.loadtxt(text_file, dtype=str, comments="#", skiprows=1)
+        print(f"reading {text_file}")
 
     def plotSimWaves(self, outRoot, useInd):
         """Plot waveforms from a simulated GEDI file"""
@@ -523,6 +527,15 @@ class gediData(object):
             # find bounds
             minX, maxX = self.findBounds(meanN, stdev, i)
             # plot it
+
+            # need to remove z values from array as well, otherwise bunch of missing y points
+            # self.waveData = [x for x in self.wave[i] if x != 0]
+            # print(self.waveData)
+            # currently this appends a whole wave array to a tuple with the z.
+            # self.wave_z = [(self.wave[i], self.z[i]) for i in range(len(self.wave))]
+            # self.wave_z = list(zip(self.wave, self.z))
+            # [(x, y) for x, y in (self.wave, self.z)]
+            # print(self.wave_z[0])
 
             plt.plot(self.wave[i], self.z, label="Waveform", color="green")
             # plt.plot(self.gWave[i] * reflScale + meanN, z, label="Ground")

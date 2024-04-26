@@ -78,7 +78,7 @@ Plotting
 into PNG:
 python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
 
-python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
+python3	src/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots/
 
 Into CSV:
 python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --writeWaves --outRoot plots
