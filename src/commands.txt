@@ -78,7 +78,7 @@ Plotting
 into PNG:
 python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
 
-python3	src/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots/
+python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --outRoot plots
 
 Into CSV:
 python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 --writeWaves --outRoot plots
@@ -88,3 +88,13 @@ python3	$GEDIRAT_ROOT/gediHandler.py --input /exports/csce/datastore/geos/groups
 converting sim waves to pts
 
 gediMetric -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/grid.h5 -outRoot Points -photonCount -nPhotons $n
+
+what is an appropriate photon number?
+gediMetric -input sim_waves/bonaly.h5 -outRoot Points -photonCount -nPhotons 100
+
+
+#####################
+file locations on linux:
+cd /exports/csce/datastore/geos/groups/MSCGIS/s2559258
+exports/csce/datastore/geos/groups/3d_env/data/ALS/raw/glamis_only/chave_paracou/ALS_ground$ 
+
