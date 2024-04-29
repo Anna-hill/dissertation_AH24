@@ -124,6 +124,6 @@ if __name__ == "__main__":
         nY=nY,
         res=30,
         epsg=27700,
-        outFile="ndvi_footprints",
+        outFile="ndvi_footprints.tif",
         noData=-999.0,
     )
