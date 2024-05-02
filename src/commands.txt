@@ -90,7 +90,21 @@ converting sim waves to pts
 gediMetric -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/grid.h5 -outRoot Points -photonCount -nPhotons $n
 
 what is an appropriate photon number?
-gediMetric -input sim_waves/bonaly.h5 -outRoot Points -photonCount -nPhotons 100
+gediMetric -input sim_waves/bonaly.h5 -readHDFgedi -outRoot Points -photonCount -nPhotons 100
+
+##########################
+running lastools on simulated photons to see what happens
+
+
+G:\LAStools\bin\lasground_new.exe -i Z:\s2559258\Bonaly\sim_las\*.las -odir Z:\s2559258\Bonaly\sim_ground -step 40 -offset 0.5 -spike 0.5  -cores 3
+
+G:\LAStools\bin\lasheight.exe -i Z:\s2559258\Bonaly\sim_ground\*.las -odir Z:\s2559258\Bonaly\sim_height
+
+Making a DTM:
+mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -DTM -float -output sim_bonaly_DTM_50mg
+
+Making a DSM:
+mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -height -float -output sim_bonaly_DSM_50m
 
 
 #####################
