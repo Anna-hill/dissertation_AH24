@@ -90,7 +90,7 @@ converting sim waves to pts
 gediMetric -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/grid.h5 -outRoot Points -photonCount -nPhotons $n
 
 what is an appropriate photon number?
-gediMetric -input sim_waves/bonaly.h5 -readHDFgedi -outRoot Points -photonCount -nPhotons 100
+gediMetric -input /exports/csce/datastore/geos/groups/MSCGIS/s2559258/Bonaly/sim_waves/bonaly.h5 -readHDFgedi -outRoot Points -photonCount -nPhotons 100
 
 ##########################
 running lastools on simulated photons to see what happens
@@ -106,9 +106,17 @@ mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -DTM -float -outpu
 Making a DSM:
 mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -height -float -output sim_bonaly_DSM_50m
 
+G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o simground.tif -keep_class 2 -step 30
+
+G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o simground100.tif -keep_class 2 -step 100
+
+
 
 #####################
 file locations on linux:
 cd /exports/csce/datastore/geos/groups/MSCGIS/s2559258
 exports/csce/datastore/geos/groups/3d_env/data/ALS/raw/glamis_only/chave_paracou/ALS_ground$ 
+
+
+G:\LAStools\bin\las2las64.exe M:\dissertation\bonaly\sim_ground_40_05_03\sim_bonaly.las -set_version 1.4 -o to_14.las
 
