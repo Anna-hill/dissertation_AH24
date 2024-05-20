@@ -2,6 +2,7 @@ import os
 import subprocess
 import h5py
 from glob import glob
+import lasBounds
 
 
 # Run GediRat to simulate waveforms
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
 # apply looping on bounds
 
-"""print(f"working on: {bounds}")
+print(f"working on: {bounds}")
 
 # vary study area and spacing?
 os.system(
@@ -66,7 +67,8 @@ print(f"Simulated waveforms output to {study_area}.h5")
 
 # Gedi metric run (finesse???)
 os.system(
-    f"gediMetric -input {study_area}.h5 -readHDFgedi -ground -varScale 3.5 -sWidth 0.8 -rhRes 2 -laiRes 5")
+    f"gediMetric -input {study_area}.h5 -readHDFgedi -ground -varScale 3.5 -sWidth 0.8 -rhRes 2 -laiRes 5"
+)
 
 
 # look in file ???
@@ -88,4 +90,3 @@ os.system(
 )
 
 print(f"H5 file {GediRat_output}.h5 conveted to {study_area}Points.pts")
-"""
