@@ -1,9 +1,6 @@
-import os
 import time
-import h5py
 import subprocess
 import argparse
-import h5py
 from glob import glob
 import lasBounds
 
@@ -22,8 +19,24 @@ def gediCommands():
         help=("Study area name"),
     )
 
+    p.add_argument(
+        "--everywhere",
+        dest="everyWhere",
+        type=int,
+        default="0",
+        help=("Whether to run code on all study sites, 0 no, 1 yes"),
+    )
+
     cmdargs = p.parse_args()
     return cmdargs
+
+
+def testFilepath(folder):
+    filePath = f"data/{folder}/raw_las"
+
+    file_list = glob(filePath + "/*.las")
+
+    print(file_list)
 
 
 def extractBounds(folder):
@@ -34,7 +47,7 @@ def extractBounds(folder):
     print(file_list)
     for idx, file in enumerate(file_list):
         bounds = lasBounds.lasMBR(file)
-        print(f"working on file {idx + 1} of {len(file_list)}, bounds = {bounds}")
+        print(f"working on {folder} {idx + 1} of {len(file_list)}, bounds = {bounds}")
         outname = f"data/{folder}/sim_waves/Sim_{bounds[0]}{bounds[1]}.h5"
 
         rat_files = subprocess.run(
@@ -71,7 +84,7 @@ def extractBounds(folder):
 
         print("The exit code was: %d" % plot_rats.returncode)"""
         # The following command works in linux, but likely to be slower than alternatives
-        # Currently looks wierd because i have text file from past gedi metric run and they don't match
+        # Currently looks weird because i have text file from past gedi metric run and they don't match
         # python3	$GEDIRAT_ROOT/gediHandler.py --input data/Bonaly/sim_waves/Sim_320000.0665000.0.h5 --outRoot data/Bonaly/shell_plots/
 
 
@@ -79,11 +92,32 @@ if __name__ == "__main__":
     t = time.perf_counter()
 
     cmdargs = gediCommands()
-    study_area = cmdargs.studyArea
+    all_sites = cmdargs.everyWhere
 
     # find las file in arg-defined study area folder
     # find bounds of las file
-    extractBounds(study_area)
+
+    if all_sites > 0:
+        study_sites = [
+            "Bonaly",
+            "hubbard_brook",
+            "la_selva",
+            "nourages",
+            "oak_ridge",
+            "paracou",
+            "robson_creek",
+            "wind_river",
+        ]
+        print(f"working on all sites ({all_sites})")
+        for site in study_sites:
+            # testFilepath(site)
+            extractBounds(site)
+            # come back to this later
+            # don't want to run code on all until thoroughly tested
+    else:
+        study_area = cmdargs.studyArea
+        print(f"working on {study_area}")
+        extractBounds(study_area)
 
     # in python window in terminal:
     # sanity check of hdf5 files (better way later)
@@ -106,3 +140,4 @@ if __name__ == "__main__":
     # then we need a lastools shell
     # Test efficiency
     t = time.perf_counter() - t
+    print(t)
