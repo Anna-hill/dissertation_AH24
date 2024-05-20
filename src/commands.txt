@@ -106,6 +106,8 @@ mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -DTM -float -outpu
 Making a DSM:
 mapLidar -input sim_ground/sim_bonaly.las -res 50 -epsg 27700 -height -float -output sim_bonaly_DSM_50m
 
+mapLidar -input sim_ground/sim_bonaly.las -writeBound -epsg 27700 -output sim_bonaly_bounds
+
 G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o simground.tif -keep_class 2 -step 30
 
 G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o simground100.tif -keep_class 2 -step 100
@@ -120,3 +122,9 @@ exports/csce/datastore/geos/groups/3d_env/data/ALS/raw/glamis_only/chave_paracou
 
 G:\LAStools\bin\las2las64.exe M:\dissertation\bonaly\sim_ground_40_05_03\sim_bonaly.las -set_version 1.4 -o to_14.las
 
+
+
+############
+Bounds attempt:
+
+python3	$GEDIRAT_ROOT/gediHandler.py --input sim_waves/bonaly.h5 --writeCoords --outRoot Coords
