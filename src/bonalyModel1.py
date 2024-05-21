@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     # this does not work because ndvi_vals is 1d array
     # therefore it does not have a shape?
-    writeToFile(
+    """writeToFile(
         data=ndvi_vals,
         minX=minX,
         maxY=maxY,
@@ -126,4 +126,4 @@ if __name__ == "__main__":
         epsg=27700,
         outFile="ndvi_footprints.tif",
         noData=-999.0,
-    )
+    )"""

@@ -128,3 +128,11 @@ G:\LAStools\bin\las2las64.exe M:\dissertation\bonaly\sim_ground_40_05_03\sim_bon
 Bounds attempt:
 
 python3	$GEDIRAT_ROOT/gediHandler.py --input sim_waves/bonaly.h5 --writeCoords --outRoot Coords
+
+
+####
+Testing noise commands
+gediMetric -input data/Bonaly/sim_waves/Sim_320000.0665000.0.h5 -readHDFgedi -outRoot data/Bonaly/sim_waves/metric_output/pts -photonCount -nPhotons 100 -ground -varScale 3.5 -sWidth 0.8 -rhRes 2 -laiRes 5 -dcBias 1
+
+
+gediMetric -input data/Bonaly/sim_waves/Sim_320000.0665000.0.h5 -readHDFgedi -outRoot data/Bonaly/sim_waves/metric_output/noiseMult2 -photonCount -nPhotons 100 -ground -varScale 3.5 -sWidth 0.8 -noiseMult 2
