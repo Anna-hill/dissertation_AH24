@@ -112,6 +112,8 @@ G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o s
 
 G:\LAStools\bin\lasgrid.exe -i Z:\s2559258\Bonaly\sim_height\sim_bonaly.las -o simground100.tif -keep_class 2 -step 100
 
+G:\LAStools\bin\lasinfo -i Z:\s2559258\dissertation_AH24\data\Bonaly\raw_las\NT2065_4PPM_LAS_PHASE5.las 
+
 
 
 #####################
