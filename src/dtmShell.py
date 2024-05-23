@@ -1,3 +1,5 @@
+""" Shell script to create DTMs and assess accuracy of simulated data"""
+
 import time
 import numpy as np
 import subprocess
@@ -99,7 +101,7 @@ def createDTM(folder):
         folder str): study site name for folder path
     """
     # Retrieve files in different study site folders
-    # note: does not work on differnt noise/pts values?
+    # note: does not work on different noise/pts values?
     # need to write in more for this
     alsPath = f"data/{folder}/raw_las"
     simPath = f"data/{folder}/sim_las"
@@ -151,7 +153,6 @@ def compareDTM(folder):
         sim_open = rasterio.open(filename[1])
         als_read = als_open.read(1)
         sim_read = sim_open.read(1)
-        print(als_read, sim_read)
         rmse = np.sqrt(np.mean((sim_read - als_read) ** 2))
         rSquared = metrics.r2_score(als_read, sim_read)
         # Create new raster of difference
