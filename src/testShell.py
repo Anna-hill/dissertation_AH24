@@ -48,6 +48,8 @@ def gediCommands():
 
 
 def filePath(folder):
+    """Function to test file paths and glob"""
+
     filePath = f"data/{folder}/raw_las"
 
     file_list = glob(filePath + "/*.las")
@@ -56,14 +58,23 @@ def filePath(folder):
 
 
 def extractBounds(folder):
-    filePath = f"data/{folder}/raw_las"
+    """Function to run gediRat (waveform simulation) on las files in a folder
 
+    Args:
+        folder (str): folder for specified study site
+    """
+
+    # Identify files in folders
+    filePath = f"data/{folder}/raw_las"
     file_list = glob(filePath + "/*.las")
+
     for idx, file in enumerate(file_list):
+        # Retrieve bounds of las files
         bounds = lasBounds.lasMBR(file)
         print(f"working on {folder} {idx + 1} of {len(file_list)}, bounds = {bounds}")
         outname = f"data/{folder}/sim_waves/Sim_{bounds[0]}{bounds[1]}.h5"
 
+        # Run gediRat in command line
         rat_files = subprocess.run(
             [
                 "gediRat",
@@ -87,8 +98,15 @@ def extractBounds(folder):
 
 
 def metricCommand(input, outRoot, nPhotons, noise):
+    """Define framework for gediMetric comands
+
+    Args:
+        input (str): input hdf5 file
+        outRoot (str): output file path
+        nPhotons (int): number of photons per waveform
+        noise (int): number of noise photons per waveform
+    """
     gedi_metric = subprocess.run(
-        # change command to reflect real command for gediMetric
         [
             "gediMetric",
             "-input",
@@ -108,8 +126,17 @@ def metricCommand(input, outRoot, nPhotons, noise):
 
 
 def runMetric(folder, noise, photons):
-    filePath = f"data/{folder}/sim_waves"
+    """Use gediMetric to convert hdf5 outputs of gedirat simulation into .pts files
+        Also vary noise and photon count
 
+    Args:
+        folder (str): name of study site
+        noise (int): noise level. -1 will trigger multiple options
+        photons (int): photon count per waveform. -1 will trigger multiple options
+    """
+
+    # Find file names
+    filePath = f"data/{folder}/sim_waves"
     file_list = glob(filePath + "/*.h5")
 
     noise_levels = [
@@ -118,7 +145,11 @@ def runMetric(folder, noise, photons):
         100,
     ]  # change values to appropriate noise settings
     photon_count = [200, 150, 100, 50]
-    if noise == -1 and photons == -1:  # -1 gives all noise settings
+
+    # 4 differnt options to allow different combinations of variation for gediMetric command
+
+    # All noises all photons options
+    if noise == -1 and photons == -1:
         for idx, file in enumerate(file_list):
             for nPhotons in photon_count:
                 for iNoise in noise_levels:
@@ -127,7 +158,9 @@ def runMetric(folder, noise, photons):
                         f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {iNoise}"
                     )
                     metricCommand(file, outroot, nPhotons, iNoise)
-    elif noise == -1 and photons != -1:  # -1 gives all noise settings
+
+    # All noises but only 1 photon value
+    elif noise == -1 and photons != -1:
         for idx, file in enumerate(file_list):
             for iNoise in noise_levels:
                 outroot = f"data/{folder}/pts_metric/{idx}_p{photons}_n{iNoise}"
@@ -136,7 +169,8 @@ def runMetric(folder, noise, photons):
                 )
                 metricCommand(file, outroot, photons, iNoise)
 
-    elif noise != -1 and photons == -1:  # -1 gives all noise settings
+    # Only 1 noise level but all photon options
+    elif noise != -1 and photons == -1:
         for idx, file in enumerate(file_list):
             for nPhotons in photon_count:
                 outroot = f"data/{folder}/pts_metric/{idx}_p{nPhotons}_n{noise}"
@@ -144,6 +178,8 @@ def runMetric(folder, noise, photons):
                     f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {noise}"
                 )
                 metricCommand(file, outroot, nPhotons, noise)
+
+    # 1 noise level and 1 photon count
     else:
         for file in file_list:
             outroot = f"data/{folder}/pts_metric/{idx}_p{photons}_n{noise}"
@@ -161,9 +197,7 @@ if __name__ == "__main__":
     set_noise = cmdargs.noise
     set_pCount = cmdargs.pCount
 
-    # find las file in arg-defined study area folder
-    # find bounds of las file
-
+    # process all sites
     if all_sites > 0:
         study_sites = [
             "Bonaly",
@@ -173,19 +207,18 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",  # removed for now, will run alone later
+            "wind_river",
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            # testFilepath(site)
-            ##extractBounds(site)
+            extractBounds(site)
             runMetric(site, set_noise, set_pCount)
-            # come back to this later
-            # don't want to run code on all until thoroughly tested
+
+    # Only process given site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        ##extractBounds(study_area)
+        extractBounds(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
     # in python window in terminal:
@@ -196,15 +229,8 @@ if __name__ == "__main__":
     #    >>> list(f)
     #    >>> list(f["LAT0"])
 
-    # looping on bounds (OOSA), i.e. find bounds of 1/4 of las file
-    # Run GediRat to simulate waveforms in each quarter
-    # example:
-
-    # move on to other quarters, then other files
-
-    # Once simulated, will need to run GEDImetric, then convert to pts
-
     # then we need a lastools shell
+
     # Test efficiency
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

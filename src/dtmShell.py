@@ -1,8 +1,10 @@
 import time
+import numpy as np
 import subprocess
 import argparse
 import rasterio
 from glob import glob
+from sklearn import metrics
 import lasBounds
 
 
@@ -63,6 +65,14 @@ def findEPSG(study_site):
 
 
 def runMapLidar(input, res, epsg, output):
+    """Framework for mapLidar command to be run in terminal
+
+    Args:
+        input (str): input file path
+        res (int): output dtm resolution
+        epsg (int): output epsg code
+        output (str): output file name
+    """
     create_dtm = subprocess.run(
         [
             "mapLidar",
@@ -83,9 +93,18 @@ def runMapLidar(input, res, epsg, output):
 
 
 def createDTM(folder):
+    """Run maplidar command to create DTMs from ALS and simulated waveforms
+
+    Args:
+        folder str): study site name for folder path
+    """
+    # Retrieve files in different study site folders
+    # note: does not work on differnt noise/pts values?
+    # need to write in more for this
     alsPath = f"data/{folder}/raw_las"
     simPath = f"data/{folder}/sim_las"
 
+    # Create ALS dtm
     als_list = glob(alsPath + "/*.las")
     for idx, als_file in enumerate(als_list):
         bounds = lasBounds.lasMBR(als_file)
@@ -94,6 +113,7 @@ def createDTM(folder):
         outname = f"data/{folder}/als_dtm/{bounds[0]}{bounds[1]}"
         runMapLidar(als_file, 30, epsg, outname)
 
+    # Create simulated data DTM
     sim_list = glob(simPath + "/*.las")
     for idx, sim_file in enumerate(sim_list):
         bounds = lasBounds.lasMBR(sim_file)
@@ -103,19 +123,43 @@ def createDTM(folder):
 
 
 def compareDTM(folder):
+    """Assess accuracy of simulated DTMs
+
+    Args:
+        folder (_type_): _description_
+    """
     alsPath = f"data/{folder}/als_dtm"
     simPath = f"data/{folder}/sim_dtm"
 
     als_list = glob(alsPath + "/*.tif")
     sim_list = glob(simPath + "/*.tif")
 
-    for als_dtm in als_list:
-        for sim_dtm in sim_list:
-            print(als_dtm, sim_dtm)
-            if als_dtm == sim_dtm:
-                als_open = rasterio.open(als_dtm)
-                sim_open = rasterio.open(sim_dtm)
-                print(als_open, sim_open)
+    # Find just the file names without folder names
+    als_files = {file.split("/")[-1] for file in als_list}
+    sim_files = {file.split("/")[-1] for file in sim_list}
+
+    # Find matching pairs of files
+    matching_files = als_files & sim_files
+    matching_filesPaths = [
+        (f"{alsPath}/{filename}", f"{simPath}/{filename}")
+        for filename in matching_files
+    ]
+    # Where file names match, find metrics
+    for filename in matching_filesPaths:
+        # Test case- will be perfect match as sim file is duplicate of als
+        als_open = rasterio.open(filename[0])
+        sim_open = rasterio.open(filename[1])
+        als_read = als_open.read(1)
+        sim_read = sim_open.read(1)
+        print(als_read, sim_read)
+        rmse = np.sqrt(np.mean((sim_read - als_read) ** 2))
+        rSquared = metrics.r2_score(als_read, sim_read)
+        # Create new raster of difference
+        # Append R2 and RMSE values to an array with noise/pts values?
+        # Or a dataframe
+        # Write function to plot these things on combined sctter plot
+
+        print(f"RMSE is: {rmse}, R² is: {rSquared}")
 
 
 if __name__ == "__main__":
@@ -124,6 +168,7 @@ if __name__ == "__main__":
     cmdargs = gediCommands()
     all_sites = cmdargs.everyWhere
 
+    # Option to run on all sites
     if all_sites > 0:
         study_sites = [
             "Bonaly",
@@ -133,17 +178,18 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",  # removed for now, will run alone later
+            "wind_river",
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            # createDTM(site)
+            createDTM(site)
             compareDTM(site)
 
+    # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        # createDTM(study_area)
+        createDTM(study_area)
         compareDTM(study_area)
 
     t = time.perf_counter() - t
