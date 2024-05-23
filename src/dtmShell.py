@@ -1,6 +1,7 @@
 import time
 import subprocess
 import argparse
+import rasterio
 from glob import glob
 import lasBounds
 
@@ -101,6 +102,22 @@ def createDTM(folder):
         runMapLidar(sim_file, 30, epsg, outname)
 
 
+def compareDTM(folder):
+    alsPath = f"data/{folder}/als_dtm"
+    simPath = f"data/{folder}/sim_dtm"
+
+    als_list = glob(alsPath + "/*.tif")
+    sim_list = glob(simPath + "/*.tif")
+
+    for als_dtm in als_list:
+        for sim_dtm in sim_list:
+            print(als_dtm, sim_dtm)
+            if als_dtm == sim_dtm:
+                als_open = rasterio.open(als_dtm)
+                sim_open = rasterio.open(sim_dtm)
+                print(als_open, sim_open)
+
+
 if __name__ == "__main__":
     t = time.perf_counter()
 
@@ -120,16 +137,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            # testFilepath(site)
-            ##extractBounds(site)
-            createDTM(site)
-            # come back to this later
-            # don't want to run code on all until thoroughly tested
+            # createDTM(site)
+            compareDTM(site)
+
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        ##extractBounds(study_area)
-        createDTM(study_area)
+        # createDTM(study_area)
+        compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
