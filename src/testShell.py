@@ -72,7 +72,7 @@ def extractBounds(folder):
         # Retrieve bounds of las files
         bounds = lasBounds.lasMBR(file)
         print(f"working on {folder} {idx + 1} of {len(file_list)}, bounds = {bounds}")
-        outname = f"data/{folder}/sim_waves/Sim_{bounds[0]}{bounds[1]}.h5"
+        outname = f"data/{folder}/sim_waves/{bounds[0]}{bounds[1]}.h5"
 
         # Run gediRat in command line
         rat_files = subprocess.run(
@@ -146,14 +146,17 @@ def runMetric(folder, noise, photons):
     ]  # change values to appropriate noise settings
     photon_count = [200, 150, 100, 50]
 
-    # 4 differnt options to allow different combinations of variation for gediMetric command
+    # 4 different options to allow different combinations of variation for gediMetric command
 
     # All noises all photons options
     if noise == -1 and photons == -1:
         for idx, file in enumerate(file_list):
+            clipFile = lasBounds.clipNames(file, ".h5")
             for nPhotons in photon_count:
                 for iNoise in noise_levels:
-                    outroot = f"data/{folder}/pts_metric/{idx}_p{nPhotons}_n{iNoise}"
+                    outroot = (
+                        f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{iNoise}"
+                    )
                     print(
                         f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {iNoise}"
                     )
@@ -162,8 +165,9 @@ def runMetric(folder, noise, photons):
     # All noises but only 1 photon value
     elif noise == -1 and photons != -1:
         for idx, file in enumerate(file_list):
+            clipFile = lasBounds.clipNames(file, ".h5")
             for iNoise in noise_levels:
-                outroot = f"data/{folder}/pts_metric/{idx}_p{photons}_n{iNoise}"
+                outroot = f"data/{folder}/pts_metric/{clipFile}_p{photons}_n{iNoise}"
                 print(
                     f"working on {folder} {idx + 1} of {len(file_list)}, photons: {photons} noise: {iNoise}"
                 )
@@ -172,8 +176,9 @@ def runMetric(folder, noise, photons):
     # Only 1 noise level but all photon options
     elif noise != -1 and photons == -1:
         for idx, file in enumerate(file_list):
+            clipFile = lasBounds.clipNames(file, ".h5")
             for nPhotons in photon_count:
-                outroot = f"data/{folder}/pts_metric/{idx}_p{nPhotons}_n{noise}"
+                outroot = f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{noise}"
                 print(
                     f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {noise}"
                 )
@@ -182,7 +187,8 @@ def runMetric(folder, noise, photons):
     # 1 noise level and 1 photon count
     else:
         for file in file_list:
-            outroot = f"data/{folder}/pts_metric/{idx}_p{photons}_n{noise}"
+            clipFile = lasBounds.clipNames(file, ".h5")
+            outroot = f"data/{folder}/pts_metric/{clipFile}_p{photons}_n{noise}"
             print(
                 f"working on {folder} {idx + 1} of {len(file_list)}, photons: {photons} noise: {noise}"
             )
