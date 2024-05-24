@@ -5,6 +5,7 @@ import numpy as np
 import subprocess
 import argparse
 import rasterio
+import regex
 from glob import glob
 from sklearn import metrics
 import lasBounds
@@ -73,6 +74,20 @@ class dtmCreation(object):
 
         return study_site
 
+    def interpretName(self, input):
+        self.rNoise = r"[n]+\d+"
+        self.rNPhotons = r"[p]+\d+"
+        # self.summaryStats = np.empty((1, 2), dtype=str)
+        # self.rCoords = r"[\d]+\d+[.]+\d+[_]+[\d]+\d+[.]+\d"
+
+        self.noise_list = np.array(
+            (regex.findall(pattern=self.rNoise, string=input)), axis=0, dtype=str
+        )
+        self.nPhotons_list = np.array(
+            (regex.findall(pattern=self.rNPhotons, string=input)), axis=1, dtype=str
+        )
+        print(self.noise_list, self.rNPhotons)
+
     def runMapLidar(self, input, res, epsg, output):
         """Framework for mapLidar command to be run in terminal
 
@@ -126,17 +141,18 @@ class dtmCreation(object):
         # Create simulated data DTM
         self.sim_list = glob(self.simPath + "/*.pts")
         # Need to extract noise/photons from filename?
+
         # make an array?
         ##  Folder, Bounds xy, noise, photons
         ## then append metrics to array next?
         for idx, self.sim_file in enumerate(self.sim_list):
-            self.bounds = lasBounds.lasMBR(self.sim_file)
             print(
                 f"working on {folder} {idx + 1} of {len(self.sim_list)}, bounds = {self.bounds}"
             )
-            epsg = self.findEPSG(folder)
-            outname = f"data/{folder}/sim_dtm/{self.bounds[0]}{self.bounds[1]}"
-            ## runMapLidar(sim_file, 30, epsg, outname)
+            self.bounds = lasBounds.lasMBR(self.sim_file)
+            self.epsg = self.findEPSG(folder)
+            self.outname = f"data/{folder}/sim_dtm/{self.bounds[0]}{self.bounds[1]}"
+            ## runMapLidar(sim_file, 30, self.epsg, self.outname)
 
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs

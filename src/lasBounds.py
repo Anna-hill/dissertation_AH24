@@ -2,6 +2,8 @@
 
 
 import laspy
+import regex
+from glob import glob
 import numpy as np
 
 
@@ -25,7 +27,26 @@ def clipNames(name, suffix):
     return clipped
 
 
-# if __name__ == "__main__":
-# lasMBR("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las")
-# name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")
-# print(name)
+def interpretName():
+    filePath = f"data/Bonaly/sim_las"
+
+    file_list = glob(filePath + "/*.pts")
+
+    rNPhotons = r"[p]+\d+"
+    rNoise = r"[n]+\d+"
+    # summaryStats = np.empty((1, 2), dtype=str)
+    # rCoords = r"[\d]+\d+[.]+\d+[_]+[\d]+\d+[.]+\d"
+    noise_list = []
+    nPhotons_list = []
+    for file in file_list:
+        nPhotons_list.append(regex.findall(pattern=rNPhotons, string=file)[0])
+        noise_list.append(regex.findall(pattern=rNoise, string=file)[0])
+    print(noise_list, nPhotons_list)
+    # need to strip n, p, then append to dataframe? (headers useful)
+
+
+if __name__ == "__main__":
+    # lasMBR("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las")
+    # name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")
+    # print(name)
+    interpretName()

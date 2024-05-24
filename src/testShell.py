@@ -72,7 +72,7 @@ def extractBounds(folder):
         # Retrieve bounds of las files
         bounds = lasBounds.lasMBR(file)
         print(f"working on {folder} {idx + 1} of {len(file_list)}, bounds = {bounds}")
-        outname = f"data/{folder}/sim_waves/{bounds[0]}{bounds[1]}.h5"
+        outname = f"data/{folder}/sim_waves/{bounds[0]}_{bounds[1]}.h5"
 
         # Run gediRat in command line
         rat_files = subprocess.run(
