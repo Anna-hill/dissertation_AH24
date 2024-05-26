@@ -174,6 +174,33 @@ class dtmCreation(object):
             self.number_list.extend(map(int, self.num_str))
         return self.number_list
 
+    def rasterio_write(self, data, outname, template_raster, nodata):
+        """Create output geotiff from array and pre-exisiting geotiff with rasterio
+
+        Args:
+            data (ndarray): data to convert into geotiff
+            outname (str): output file name
+            template_raster (geotiff): existing geotiff to replicate metadata
+            nodata (int): no data value
+        """
+
+        self.raster = rasterio.open(
+            outname,
+            "w",
+            driver="GTiff",
+            height=template_raster.height,
+            width=template_raster.width,
+            count=1,
+            dtype=data.dtype,
+            crs=template_raster.crs,
+            transform=template_raster.transform,
+        )
+        self.raster.write(data, 1)
+
+        self.raster.nodata = nodata
+        self.raster.close()
+        print(f"Tiff written to {outname}")
+
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
 
@@ -223,7 +250,8 @@ class dtmCreation(object):
             # Test case- will be perfect match as sim file is duplicate of als
             self.als_open = rasterio.open(self.filename[0])
             self.sim_open = rasterio.open(self.filename[1])
-            self.file_name_saved.append(self.filename[1])
+            clip_match = lasBounds.clipNames(self.filename[1], ".tif")
+            self.file_name_saved.append(clip_match)
             # extract noise and photon count vals
             # self.interpretName(self.filename[1])
             nPhotons_list.append(
@@ -234,15 +262,22 @@ class dtmCreation(object):
 
             self.als_read = self.als_open.read(1)
             self.sim_read = self.sim_open.read(1)
+
+            # create difference raster
+            self.difference = self.als_read - self.sim_read
+            self.outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+            self.rasterio_write(
+                data=self.difference,
+                outname=self.outname,
+                template_raster=self.sim_open,
+                nodata=0,
+            )
+
+            # calculate stats
             self.rmse = np.sqrt(np.mean((self.sim_read - self.als_read) ** 2))
             self.rSquared = metrics.r2_score(self.als_read, self.sim_read)
             self.rmse_list.append(self.rmse)
             self.r2.append(self.rSquared)
-            # Create new raster of difference
-            # Append R2 and RMSE values to an array with noise/pts values?
-            # Or a dataframe
-            # Write function to plot these things on combined sctter plot
-            # print(f"file names are: {self.filename[0]} and {self.filename[1]}")
 
             print(f"RMSE is: {self.rmse}, R² is: {self.rSquared}")
         nPhotons = self.removeStrings(nPhotons_list)
