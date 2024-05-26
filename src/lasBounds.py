@@ -14,10 +14,9 @@ def lasMBR(file):
     # Find min max coord values form las file header and append to list
     # index p. 2 gives Z bounds, not included here
     for minXyz in las.header.min[0:2]:
-        MBR.append(minXyz)
+        MBR.append(round(minXyz, 1))
     for maxXyz in las.header.max[0:2]:
-        MBR.append(maxXyz)
-    # print(MBR)
+        MBR.append(round(maxXyz, 1))
     return MBR
 
 
@@ -45,8 +44,8 @@ def interpretName():
     # need to strip n, p, then append to dataframe? (headers useful)
 
 
-if __name__ == "__main__":
-    # lasMBR("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las")
-    # name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")
-    # print(name)
-    interpretName()
+# if __name__ == "__main__":
+# lasMBR("data/paracou/raw_las/Paracou2009_284584_580489.las")
+# name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")
+# print(name)
+# interpretName()

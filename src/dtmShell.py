@@ -2,12 +2,14 @@
 
 import time
 import numpy as np
+import pandas as pd
 import subprocess
 import argparse
 import rasterio
 import regex
 from glob import glob
 from sklearn import metrics
+from os.path import commonprefix
 import lasBounds
 
 
@@ -74,19 +76,16 @@ class dtmCreation(object):
 
         return study_site
 
-    def interpretName(self, input):
-        self.rNoise = r"[n]+\d+"
-        self.rNPhotons = r"[p]+\d+"
-        # self.summaryStats = np.empty((1, 2), dtype=str)
-        # self.rCoords = r"[\d]+\d+[.]+\d+[_]+[\d]+\d+[.]+\d"
-
-        self.noise_list = np.array(
-            (regex.findall(pattern=self.rNoise, string=input)), axis=0, dtype=str
-        )
-        self.nPhotons_list = np.array(
-            (regex.findall(pattern=self.rNPhotons, string=input)), axis=1, dtype=str
-        )
-        print(self.noise_list, self.rNPhotons)
+    def interpretName(self, filename):
+        rNPhotons = r"[p]+\d+"
+        rNoise = r"[n]+\d+"
+        # summaryStats = np.empty((1, 2), dtype=str)
+        # rCoords = r"[\d]+\d+[.]+\d+[_]+[\d]+\d+[.]+\d"
+        noise_list = []
+        nPhotons_list = []
+        nPhotons_list.append(regex.findall(pattern=rNPhotons, string=filename)[0])
+        noise_list.append(regex.findall(pattern=rNoise, string=filename)[0])
+        print(noise_list, nPhotons_list)
 
     def runMapLidar(self, input, res, epsg, output):
         """Framework for mapLidar command to be run in terminal
@@ -134,25 +133,46 @@ class dtmCreation(object):
             print(
                 f"working on {folder} {idx + 1} of {len(self.als_list)}, bounds = {self.bounds}"
             )
-            epsg = self.findEPSG(folder)
-            outname = f"data/{folder}/als_dtm/{self.bounds[0]}{self.bounds[1]}"
-            ## runMapLidar(als_file, 30, epsg, outname)
+            self.epsg = self.findEPSG(folder)
+            self.outname = f"data/{folder}/als_dtm/{self.bounds[0]}_{self.bounds[1]}"
+            ## self.runMapLidar(self.als_file, 30, self.epsg, self.outname)
 
         # Create simulated data DTM
-        self.sim_list = glob(self.simPath + "/*.pts")
+        self.sim_list = glob(self.simPath + "/*.las")
         # Need to extract noise/photons from filename?
 
         # make an array?
         ##  Folder, Bounds xy, noise, photons
         ## then append metrics to array next?
         for idx, self.sim_file in enumerate(self.sim_list):
+            self.clipFile = lasBounds.clipNames(self.sim_file, ".las")
             print(
                 f"working on {folder} {idx + 1} of {len(self.sim_list)}, bounds = {self.bounds}"
             )
             self.bounds = lasBounds.lasMBR(self.sim_file)
             self.epsg = self.findEPSG(folder)
-            self.outname = f"data/{folder}/sim_dtm/{self.bounds[0]}{self.bounds[1]}"
-            ## runMapLidar(sim_file, 30, self.epsg, self.outname)
+            self.outname = f"data/{folder}/sim_dtm/{self.clipFile}"
+            ## self.runMapLidar(self.sim_file, 30, self.epsg, self.outname)
+
+    def findPairs(self, list1, list2):
+        "identify files of same area based on matching coords"
+        self.als_pairs = []
+        self.sim_pairs = []
+        for self.file1 in list1:
+            self.coords1 = self.file1[:17]
+            for self.file2 in list2:
+                self.coords2 = self.file2[:17]
+                if self.coords1 == self.coords2:
+                    self.als_pairs.append(self.file1)
+                    self.sim_pairs.append(self.file2)
+        return self.als_pairs, self.sim_pairs, self.coords2
+
+    def removeStrings(self, mixed_list):
+        self.number_list = []
+        for self.item in mixed_list:
+            self.num_str = regex.findall(r"\d+", self.item)
+            self.number_list.extend(map(int, self.num_str))
+        return self.number_list
 
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
@@ -171,26 +191,76 @@ class dtmCreation(object):
         self.sim_files = {file.split("/")[-1] for file in self.sim_list}
 
         # Find matching pairs of files
-        self.matching_files = self.als_files & self.sim_files
-        self.matching_filesPaths = [
-            (f"{self.alsPath}/{filename}", f"{self.simPath}/{filename}")
-            for filename in self.matching_files
-        ]
+        ##self.matching_files = self.als_files & self.sim_files
+        ## self.matching_files = self.findPairs(self.als_files, self.sim_files)
+        self.matching_als, self.matching_sim, self.coords = self.findPairs(
+            self.als_files, self.sim_files
+        )
+
+        # print("matching files: ", self.matching_als, self.matching_sim)
+        # likely source of duplicates: fix later )_:
+        self.matching_filesPaths = []
+        for self.match_als in self.matching_als:
+            for self.match_sim in self.matching_sim:
+                self.matching_filesPaths.append(
+                    (
+                        f"{self.alsPath}/{self.match_als}",
+                        f"{self.simPath}/{self.match_sim}",
+                    )
+                )
+
+        print("matching files: ", self.matching_filesPaths)
         # Where file names match, find metrics
+
+        rNPhotons = r"[p]+\d+"
+        rNoise = r"[n]+\d+"
+        noise_list = []
+        nPhotons_list = []
+        self.r2 = []
+        self.rmse_list = []
+        self.file_name_saved = []
         for self.filename in self.matching_filesPaths:
             # Test case- will be perfect match as sim file is duplicate of als
             self.als_open = rasterio.open(self.filename[0])
             self.sim_open = rasterio.open(self.filename[1])
+            self.file_name_saved.append(self.filename[1])
+            # extract noise and photon count vals
+            # self.interpretName(self.filename[1])
+            nPhotons_list.append(
+                regex.findall(pattern=rNPhotons, string=self.filename[1])[0]
+            )
+
+            noise_list.append(regex.findall(pattern=rNoise, string=self.filename[1])[0])
+
             self.als_read = self.als_open.read(1)
             self.sim_read = self.sim_open.read(1)
             self.rmse = np.sqrt(np.mean((self.sim_read - self.als_read) ** 2))
             self.rSquared = metrics.r2_score(self.als_read, self.sim_read)
+            self.rmse_list.append(self.rmse)
+            self.r2.append(self.rSquared)
             # Create new raster of difference
             # Append R2 and RMSE values to an array with noise/pts values?
             # Or a dataframe
             # Write function to plot these things on combined sctter plot
+            # print(f"file names are: {self.filename[0]} and {self.filename[1]}")
 
             print(f"RMSE is: {self.rmse}, R² is: {self.rSquared}")
+        nPhotons = self.removeStrings(nPhotons_list)
+        noise = self.removeStrings(noise_list)
+        # print(nPhotons, noise, self.rmse_list, self.r2, self.file_name_saved)
+
+        # append results to dataframe
+        results = {
+            "File": self.file_name_saved,
+            "nPhotons": nPhotons,
+            "Noise": noise,
+            "RMSE": self.rmse_list,
+            "R²": self.r2,
+        }
+
+        resultsDf = pd.DataFrame(results)
+        resultsDf.to_csv("summary_stats.csv", index=False)
+        # print(resultsDf)
 
 
 if __name__ == "__main__":
