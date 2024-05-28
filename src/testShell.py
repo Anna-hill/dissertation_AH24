@@ -140,11 +140,11 @@ def runMetric(folder, noise, photons):
     file_list = glob(filePath + "/*.h5")
 
     noise_levels = [
-        5,
+        5.3,
         10,
-        100,
+        15,
     ]  # change values to appropriate noise settings
-    photon_count = [200, 150, 100, 50]
+    photon_count = [150, 100, 50]
 
     # 4 different options to allow different combinations of variation for gediMetric command
 

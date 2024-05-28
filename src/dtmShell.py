@@ -123,8 +123,8 @@ class dtmCreation(object):
         # Retrieve files in different study site folders
         # note: does not work on different noise/pts values?
         # need to write in more for this
-        self.alsPath = f"data/{folder}/raw_las"
-        self.simPath = f"data/{folder}/sim_las"
+        self.alsPath = f"data/{folder}/als_ground"
+        self.simPath = f"data/{folder}/sim_ground"
 
         # Create ALS dtm
         self.als_list = glob(self.alsPath + "/*.las")
@@ -253,7 +253,7 @@ class dtmCreation(object):
             clip_match = lasBounds.clipNames(self.filename[1], ".tif")
             self.file_name_saved.append(clip_match)
             # extract noise and photon count vals
-            # self.interpretName(self.filename[1])
+            # self.interpretName(self.filename[1])code
             nPhotons_list.append(
                 regex.findall(pattern=rNPhotons, string=self.filename[1])[0]
             )
