@@ -11,6 +11,11 @@ testShell aims to perform automated processing to simulate waveforms
 example command:
 
 >> python3 src/testShell.py --everywhere 1 --noise -1 --pcount -1
+
+python3 src/testShell.py --everywhere 1 --noise 104 --pcount 149
+
+python3 src/testShell.py --studyarea Bonaly --noise 104 --pcount 149
+
 python3 src/testShell.py --studyarea Bonaly --noise -1 --pcount -1
 
 python3 src/testShell.py --studyarea wind_river

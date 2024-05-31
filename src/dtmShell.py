@@ -7,8 +7,9 @@ import subprocess
 import argparse
 import rasterio
 import regex
+import matplotlib.pyplot as plt
 from glob import glob
-from sklearn import metrics
+from sklearn.metrics import mean_squared_error, r2_score
 from os.path import commonprefix
 import lasBounds
 
@@ -123,7 +124,7 @@ class dtmCreation(object):
         # Retrieve files in different study site folders
         # note: does not work on different noise/pts values?
         # need to write in more for this
-        self.alsPath = f"data/{folder}/als_ground"
+        self.alsPath = f"data/{folder}/raw_las"
         self.simPath = f"data/{folder}/sim_ground"
 
         # Create ALS dtm
@@ -135,7 +136,7 @@ class dtmCreation(object):
             )
             self.epsg = self.findEPSG(folder)
             self.outname = f"data/{folder}/als_dtm/{self.bounds[0]}_{self.bounds[1]}"
-            ## self.runMapLidar(self.als_file, 30, self.epsg, self.outname)
+            self.runMapLidar(self.als_file, 30, self.epsg, self.outname)
 
         # Create simulated data DTM
         self.sim_list = glob(self.simPath + "/*.las")
@@ -152,20 +153,39 @@ class dtmCreation(object):
             self.bounds = lasBounds.lasMBR(self.sim_file)
             self.epsg = self.findEPSG(folder)
             self.outname = f"data/{folder}/sim_dtm/{self.clipFile}"
-            ## self.runMapLidar(self.sim_file, 30, self.epsg, self.outname)
+            self.runMapLidar(self.sim_file, 30, self.epsg, self.outname)
 
-    def findPairs(self, list1, list2):
-        "identify files of same area based on matching coords"
-        self.als_pairs = []
-        self.sim_pairs = []
-        for self.file1 in list1:
-            self.coords1 = self.file1[:17]
-            for self.file2 in list2:
-                self.coords2 = self.file2[:17]
-                if self.coords1 == self.coords2:
-                    self.als_pairs.append(self.file1)
-                    self.sim_pairs.append(self.file2)
-        return self.als_pairs, self.sim_pairs, self.coords2
+    def match_files(self, folder1_files, folder2_files):
+        # Dictionary to store matched files
+        self.matches = {}
+
+        # Compile a regex pattern to extract the number sequence
+        self.pattern = regex.compile(r"(\d+\.\d+_\d+\.\d+)")
+
+        # Create a dictionary for folder1 files with the extracted number sequence as keys
+        self.folder1_dict = {}
+        for self.file in folder1_files:
+            self.match = self.pattern.search(self.file)
+            if self.match:
+                self.key = self.match.group(1)
+                self.folder1_dict[self.key] = self.file
+
+        # Create a dictionary for folder2 files with the extracted number sequence as keys
+        self.folder2_dict = {}
+        for self.file in folder2_files:
+            self.match = self.pattern.search(self.file)
+            if self.match:
+                self.key = self.match.group(1)
+                if self.key not in self.folder2_dict:
+                    self.folder2_dict[self.key] = []
+                self.folder2_dict[self.key].append(self.file)
+
+        # Iterate over folder1 dictionary and find matches in folder2 dictionary
+        for self.key, self.file1 in self.folder1_dict.items():
+            if self.key in self.folder2_dict:
+                self.matches[self.file1] = self.folder2_dict[self.key]
+
+        return self.matches
 
     def removeStrings(self, mixed_list):
         self.number_list = []
@@ -201,6 +221,54 @@ class dtmCreation(object):
         self.raster.close()
         print(f"Tiff written to {outname}")
 
+    def calcMetrics(self, array1, array2):
+
+        # stats expect 1d array so flatten inputs
+        self.flat_arr1 = array1.flatten()
+        self.flat_arr2 = array2.flatten()
+
+        # make mask of data points
+        self.data_mask = self.flat_arr2 != 0
+
+        # filter out no data values
+        self.valid_arr1 = self.flat_arr1[self.data_mask]
+        self.valid_arr2 = self.flat_arr2[self.data_mask]
+
+        # count no data pixels
+        self.no_data_count = np.sum(~self.data_mask)
+
+        if len(self.valid_arr1) == 0 or len(self.valid_arr2) == 0:
+            raise ValueError("No data points found")
+        # find rmse
+        self.rmse = np.sqrt(mean_squared_error(self.valid_arr1, self.valid_arr2))
+
+        # find r2
+        self.r2 = r2_score(self.valid_arr1, self.valid_arr2)
+
+        # calculate bias
+        self.bias = np.mean(self.valid_arr1 - self.valid_arr2)
+        return self.rmse, self.r2, self.bias, self.no_data_count
+
+    def diffDTM(self, arr1, arr2, no_data_value):
+        assert arr1.shape == arr2.shape
+
+        # create valid data mask
+        self.valid_mask = (arr1 != no_data_value) & (arr2 != no_data_value)
+
+        self.result = np.full(arr1.shape, no_data_value, dtype=arr1.dtype)
+
+        self.result[self.valid_mask] = arr1[self.valid_mask] - arr2[self.valid_mask]
+
+        return self.result
+
+    def plotImage(self, raster, outname):
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        fig1 = ax1.imshow(raster, origin="lower", cmap="Spectral")
+        fig.colorbar(fig1, ax=ax1, label="Elevation difference(m)")
+        plt.savefig(f"figures/difference/{outname}.png")
+        plt.clf()
+
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
 
@@ -213,76 +281,70 @@ class dtmCreation(object):
         self.als_list = glob(self.alsPath + "/*.tif")
         self.sim_list = glob(self.simPath + "/*.tif")
 
-        # Find just the file names without folder names
-        self.als_files = {file.split("/")[-1] for file in self.als_list}
-        self.sim_files = {file.split("/")[-1] for file in self.sim_list}
-
-        # Find matching pairs of files
-        ##self.matching_files = self.als_files & self.sim_files
-        ## self.matching_files = self.findPairs(self.als_files, self.sim_files)
-        self.matching_als, self.matching_sim, self.coords = self.findPairs(
-            self.als_files, self.sim_files
-        )
-
-        # print("matching files: ", self.matching_als, self.matching_sim)
-        # likely source of duplicates: fix later )_:
-        self.matching_filesPaths = []
-        for self.match_als in self.matching_als:
-            for self.match_sim in self.matching_sim:
-                self.matching_filesPaths.append(
-                    (
-                        f"{self.alsPath}/{self.match_als}",
-                        f"{self.simPath}/{self.match_sim}",
-                    )
-                )
-
-        print("matching files: ", self.matching_filesPaths)
-        # Where file names match, find metrics
+        matched_files = self.match_files(self.als_list, self.sim_list)
 
         rNPhotons = r"[p]+\d+"
         rNoise = r"[n]+\d+"
         noise_list = []
         nPhotons_list = []
-        self.r2 = []
+        self.r2_list = []
         self.rmse_list = []
+        self.bias_list = []
         self.file_name_saved = []
-        for self.filename in self.matching_filesPaths:
-            # Test case- will be perfect match as sim file is duplicate of als
-            self.als_open = rasterio.open(self.filename[0])
-            self.sim_open = rasterio.open(self.filename[1])
-            clip_match = lasBounds.clipNames(self.filename[1], ".tif")
-            self.file_name_saved.append(clip_match)
-            # extract noise and photon count vals
-            # self.interpretName(self.filename[1])code
-            nPhotons_list.append(
-                regex.findall(pattern=rNPhotons, string=self.filename[1])[0]
-            )
+        self.noData_list = []
 
-            noise_list.append(regex.findall(pattern=rNoise, string=self.filename[1])[0])
+        for self.als_tif, files2 in matched_files.items():
+            # print(f"Matched: {file1} with {files2}")
+            for self.sim_tif in files2:
+                # print("second file: ", file, "first file: ", file1)
+                # Test case- will be perfect match as sim file is duplicate of als
+                self.als_open = rasterio.open(self.als_tif)
+                self.sim_open = rasterio.open(self.sim_tif)
+                clip_match = lasBounds.clipNames(self.sim_tif, ".tif")
+                self.file_name_saved.append(clip_match)
+                # extract noise and photon count vals
+                # self.interpretName(self.filename[1])code
+                nPhotons_list.append(
+                    regex.findall(pattern=rNPhotons, string=self.sim_tif)[0]
+                )
 
-            self.als_read = self.als_open.read(1)
-            self.sim_read = self.sim_open.read(1)
+                noise_list.append(regex.findall(pattern=rNoise, string=self.sim_tif)[0])
 
-            # create difference raster
-            self.difference = self.als_read - self.sim_read
-            self.outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
-            self.rasterio_write(
-                data=self.difference,
-                outname=self.outname,
-                template_raster=self.sim_open,
-                nodata=0,
-            )
+                self.als_read = self.als_open.read(1)
+                self.sim_read = self.sim_open.read(1)
 
-            # calculate stats
-            self.rmse = np.sqrt(np.mean((self.sim_read - self.als_read) ** 2))
-            self.rSquared = metrics.r2_score(self.als_read, self.sim_read)
-            self.rmse_list.append(self.rmse)
-            self.r2.append(self.rSquared)
+                # calculate stats
+                self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
+                    self.als_read, self.sim_read
+                )
+                if -1 <= self.rSquared <= 1:
+                    self.r2_list.append(self.rSquared)
+                    self.rmse_list.append(self.RMSE)
+                    self.bias_list.append(self.BIAS)
+                    self.noData_list.append(self.noData)
 
-            print(f"RMSE is: {self.rmse}, R² is: {self.rSquared}")
+                    # create difference raster
+                    self.difference = self.diffDTM(self.als_read, self.sim_read, 0)
+                    self.plotImage(self.difference, clip_match)
+                    self.outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+                    self.rasterio_write(
+                        data=self.difference,
+                        outname=self.outname,
+                        template_raster=self.sim_open,
+                        nodata=0,
+                    )
+                else:
+                    print(f"{self.sim_tif} - {self.als_tif} has an odd r2")
+                    self.r2_list.append(0)
+                    self.rmse_list.append(0)
+                    self.bias_list.append(0)
+                    self.noData_list.append(self.noData)
+
+                print(
+                    f"RMSE is: {self.RMSE}, R² is: {self.rSquared}, bias: {self.BIAS}"
+                )
         nPhotons = self.removeStrings(nPhotons_list)
         noise = self.removeStrings(noise_list)
-        # print(nPhotons, noise, self.rmse_list, self.r2, self.file_name_saved)
 
         # append results to dataframe
         results = {
@@ -290,11 +352,13 @@ class dtmCreation(object):
             "nPhotons": nPhotons,
             "Noise": noise,
             "RMSE": self.rmse_list,
-            "R²": self.r2,
+            "R²": self.r2_list,
+            "Bias": self.bias_list,
+            "NoData_Count": self.noData_list,
         }
 
         resultsDf = pd.DataFrame(results)
-        resultsDf.to_csv("summary_stats.csv", index=False)
+        resultsDf.to_csv("data/results/summary_stats.csv", index=False)
         # print(resultsDf)
 
 

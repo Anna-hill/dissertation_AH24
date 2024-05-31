@@ -151,6 +151,7 @@ def runMetric(folder, noise, photons):
     # All noises all photons options
     if noise == -1 and photons == -1:
         for idx, file in enumerate(file_list):
+            print("files: ", file_list)
             clipFile = lasBounds.clipNames(file, ".h5")
             for nPhotons in photon_count:
                 for iNoise in noise_levels:
@@ -190,7 +191,7 @@ def runMetric(folder, noise, photons):
             clipFile = lasBounds.clipNames(file, ".h5")
             outroot = f"data/{folder}/pts_metric/{clipFile}_p{photons}_n{noise}"
             print(
-                f"working on {folder} {idx + 1} of {len(file_list)}, photons: {photons} noise: {noise}"
+                f"working on {folder} of {len(file_list)}, photons: {photons} noise: {noise}"
             )
             metricCommand(file, outroot, photons, noise)
 
@@ -213,7 +214,7 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",
+            # "wind_river",
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
