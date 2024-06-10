@@ -237,8 +237,6 @@ class dtmCreation(object):
         # count no data pixels
         self.no_data_count = np.sum(~self.data_mask)
 
-        if len(self.valid_arr1) == 0 or len(self.valid_arr2) == 0:
-            raise ValueError("No data points found")
         # find rmse
         self.rmse = np.sqrt(mean_squared_error(self.valid_arr1, self.valid_arr2))
 
@@ -292,6 +290,7 @@ class dtmCreation(object):
         self.bias_list = []
         self.file_name_saved = []
         self.noData_list = []
+        self.folder_list = []
 
         for self.als_tif, files2 in matched_files.items():
             # print(f"Matched: {file1} with {files2}")
@@ -314,14 +313,23 @@ class dtmCreation(object):
                 self.sim_read = self.sim_open.read(1)
 
                 # calculate stats
-                self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
-                    self.als_read, self.sim_read
-                )
+                # if self.als_read, self.sim_read
+                if len(self.als_read) == 0 or len(self.sim_read) == 0:
+                    raise ValueError("No data points found")
+                    continue
+                else:
+                    self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
+                        self.als_read, self.sim_read
+                    )
                 if -1 <= self.rSquared <= 1:
+                    self.folder_list.append(folder)
                     self.r2_list.append(self.rSquared)
                     self.rmse_list.append(self.RMSE)
                     self.bias_list.append(self.BIAS)
                     self.noData_list.append(self.noData)
+                    print(
+                        f"RMSE is: {self.RMSE}, R² is: {self.rSquared}, bias: {self.BIAS}"
+                    )
 
                     # create difference raster
                     self.difference = self.diffDTM(self.als_read, self.sim_read, 0)
@@ -333,21 +341,21 @@ class dtmCreation(object):
                         template_raster=self.sim_open,
                         nodata=0,
                     )
+
                 else:
                     print(f"{self.sim_tif} - {self.als_tif} has an odd r2")
+                    self.folder_list.append(folder)
                     self.r2_list.append(0)
                     self.rmse_list.append(0)
                     self.bias_list.append(0)
                     self.noData_list.append(self.noData)
 
-                print(
-                    f"RMSE is: {self.RMSE}, R² is: {self.rSquared}, bias: {self.BIAS}"
-                )
         nPhotons = self.removeStrings(nPhotons_list)
         noise = self.removeStrings(noise_list)
 
         # append results to dataframe
         results = {
+            "Folder": self.folder_list,
             "File": self.file_name_saved,
             "nPhotons": nPhotons,
             "Noise": noise,
@@ -358,7 +366,9 @@ class dtmCreation(object):
         }
 
         resultsDf = pd.DataFrame(results)
-        resultsDf.to_csv("data/results/summary_stats.csv", index=False)
+        self.outCsv = f"data/{folder}/summary_stats_{folder}.csv"
+        resultsDf.to_csv(self.outCsv, index=False)
+        print("Results written to: ", self.outCsv)
         # print(resultsDf)
 
 
@@ -369,7 +379,7 @@ if __name__ == "__main__":
     all_sites = cmdargs.everyWhere
 
     # Option to run on all sites
-    if all_sites > 0:
+    if all_sites < 0:
         study_sites = [
             "Bonaly",
             "hubbard_brook",
@@ -380,7 +390,7 @@ if __name__ == "__main__":
             "robson_creek",
             "wind_river",
         ]
-        print(f"working on all sites ({all_sites})")
+        print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
             dtms.createDTM(site)
