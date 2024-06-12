@@ -222,6 +222,15 @@ class dtmCreation(object):
         print(f"Tiff written to {outname}")
 
     def calcMetrics(self, array1, array2):
+        """Assess differences betwen 2 DEMs
+
+        Args:
+            array1 (array): 1st array
+            array2 (array): 2nd array
+
+        Returns:
+            rmse, r2, bias, no data count: metrics
+        """
 
         # stats expect 1d array so flatten inputs
         self.flat_arr1 = array1.flatten()
@@ -248,18 +257,37 @@ class dtmCreation(object):
         return self.rmse, self.r2, self.bias, self.no_data_count
 
     def diffDTM(self, arr1, arr2, no_data_value):
+        """Create tif of difference between 2 DEMs
+
+        Args:
+            arr1 (array): 1st array
+            arr2 (array): 2nd array
+            no_data_value (int): value of no data pixels
+
+        Returns:
+            _type_: _description_
+        """
+
+        # Check arrays have same shape
         assert arr1.shape == arr2.shape
 
-        # create valid data mask
+        # create valid data mask; so comparsion excludes nodata points
         self.valid_mask = (arr1 != no_data_value) & (arr2 != no_data_value)
 
         self.result = np.full(arr1.shape, no_data_value, dtype=arr1.dtype)
 
+        # Find difference
         self.result[self.valid_mask] = arr1[self.valid_mask] - arr2[self.valid_mask]
 
         return self.result
 
     def plotImage(self, raster, outname):
+        """Make a figure from the difference DTM
+
+        Args:
+            raster (arr): data to plot
+            outname (str): output image name
+        """
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         fig1 = ax1.imshow(raster, origin="lower", cmap="Spectral")
@@ -273,16 +301,21 @@ class dtmCreation(object):
         Args:
             folder (_type_): _description_
         """
+
         self.alsPath = f"data/{folder}/als_dtm"
         self.simPath = f"data/{folder}/sim_dtm"
 
         self.als_list = glob(self.alsPath + "/*.tif")
         self.sim_list = glob(self.simPath + "/*.tif")
 
+        # Pair up ALS and sim files so they can be compared
         matched_files = self.match_files(self.als_list, self.sim_list)
 
+        # Define regex patterns to extract info from file names
         rNPhotons = r"[p]+\d+"
         rNoise = r"[n]+\d+"
+
+        # Open lists to be appended to results
         noise_list = []
         nPhotons_list = []
         self.r2_list = []
@@ -292,28 +325,27 @@ class dtmCreation(object):
         self.noData_list = []
         self.folder_list = []
 
+        # Multiple sim files for each als
         for self.als_tif, files2 in matched_files.items():
-            # print(f"Matched: {file1} with {files2}")
             for self.sim_tif in files2:
-                # print("second file: ", file, "first file: ", file1)
-                # Test case- will be perfect match as sim file is duplicate of als
                 self.als_open = rasterio.open(self.als_tif)
                 self.sim_open = rasterio.open(self.sim_tif)
+
+                # Save shortened file name to name things with later
                 clip_match = lasBounds.clipNames(self.sim_tif, ".tif")
+
+                # Save file name for results
                 self.file_name_saved.append(clip_match)
                 # extract noise and photon count vals
-                # self.interpretName(self.filename[1])code
                 nPhotons_list.append(
                     regex.findall(pattern=rNPhotons, string=self.sim_tif)[0]
                 )
-
                 noise_list.append(regex.findall(pattern=rNoise, string=self.sim_tif)[0])
 
                 self.als_read = self.als_open.read(1)
                 self.sim_read = self.sim_open.read(1)
 
                 # calculate stats
-                # if self.als_read, self.sim_read
                 if len(self.als_read) == 0 or len(self.sim_read) == 0:
                     raise ValueError("No data points found")
                     continue
@@ -321,6 +353,8 @@ class dtmCreation(object):
                     self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
                         self.als_read, self.sim_read
                     )
+
+                # Check metrics look reasonable before appending to results
                 if -1 <= self.rSquared <= 1:
                     self.folder_list.append(folder)
                     self.r2_list.append(self.rSquared)
@@ -350,17 +384,17 @@ class dtmCreation(object):
                     self.bias_list.append(0)
                     self.noData_list.append(self.noData)
 
-        nPhotons = self.removeStrings(nPhotons_list)
-        noise = self.removeStrings(noise_list)
+        self.nPhotons = self.removeStrings(nPhotons_list)
+        self.noise = self.removeStrings(noise_list)
 
         # append results to dataframe
         results = {
             "Folder": self.folder_list,
             "File": self.file_name_saved,
-            "nPhotons": nPhotons,
-            "Noise": noise,
+            "nPhotons": self.nPhotons,
+            "Noise": self.noise,
             "RMSE": self.rmse_list,
-            "R²": self.r2_list,
+            "R2": self.r2_list,
             "Bias": self.bias_list,
             "NoData_Count": self.noData_list,
         }
@@ -393,7 +427,7 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
-            dtms.createDTM(site)
+            # dtms.createDTM(site)
             dtms.compareDTM(site)
 
     # Run on specified site
@@ -401,7 +435,7 @@ if __name__ == "__main__":
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         dtms = dtmCreation()
-        dtms.createDTM(study_area)
+        # dtms.createDTM(study_area)
         dtms.compareDTM(study_area)
 
     t = time.perf_counter() - t

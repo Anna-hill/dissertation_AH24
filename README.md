@@ -23,7 +23,9 @@ python3 src/testShell.py --studyarea wind_river
 
 python3 src/dtmShell.py --everywhere -1
 python3 src/dtmShell.py --studyarea Bonaly
+python3 src/dtmShell.py --studyarea hubbard_brook
 
 run 1: hansen vals
 - exc. or
 python3 src/testShell.py --everywhere 1 --noise -1 --pcount 115
+python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1

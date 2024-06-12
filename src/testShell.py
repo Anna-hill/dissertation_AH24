@@ -57,7 +57,7 @@ def filePath(folder):
     return file_list
 
 
-def extractBounds(folder):
+def runGRat(folder):
     """Function to run gediRat (waveform simulation) on las files in a folder
 
     Args:
@@ -220,14 +220,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            extractBounds(site)
+            runGRat(site)
             runMetric(site, set_noise, set_pCount)
 
     # Only process given site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        extractBounds(study_area)
+        runGRat(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
     # in python window in terminal:
