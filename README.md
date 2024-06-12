@@ -16,7 +16,7 @@ python3 src/testShell.py --everywhere 1 --noise 104 --pcount 149
 
 python3 src/testShell.py --studyarea Bonaly --noise 104 --pcount 149
 
-python3 src/testShell.py --studyarea Bonaly --noise -1 --pcount -1
+python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
 
 python3 src/testShell.py --studyarea wind_river
 
@@ -29,3 +29,6 @@ run 1: hansen vals
 - exc. or
 python3 src/testShell.py --everywhere 1 --noise -1 --pcount 115
 python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
+
+
+# last la selva las file moved to test

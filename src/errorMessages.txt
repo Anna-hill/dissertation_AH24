@@ -1,0 +1,42 @@
+running testShell:
+
+HDF5-DIAG: Error detected in HDF5 (1.10.7) thread 1:
+  #000: ../../../src/H5F.c line 595 in H5Fclose(): closing file ID failed
+    major: File accessibility
+    minor: Unable to close file
+  #001: ../../../src/H5Fint.c line 2113 in H5F__close(): decrementing file ID failed
+    major: File accessibility
+    minor: Unable to decrement reference count
+  #002: ../../../src/H5I.c line 1307 in H5I_dec_app_ref(): can't decrement ID ref count
+    major: Object atom
+    minor: Unable to decrement reference count
+  #003: ../../../src/H5Fint.c line 2173 in H5F__close_cb(): can't close file
+    major: File accessibility
+    minor: Unable to close file
+  #004: ../../../src/H5Fint.c line 2346 in H5F_try_close(): problems closing file
+    major: File accessibility
+    minor: Unable to close file
+  #005: ../../../src/H5Fint.c line 1426 in H5F__dest(): unable to close file
+    major: File accessibility
+    minor: Unable to close file
+  #006: ../../../src/H5FD.c line 850 in H5FD_close(): close failed
+    major: Virtual File Layer
+    minor: Unable to close file
+  #007: ../../../src/H5FDsec2.c line 462 in H5FD__sec2_close(): unable to close file, errno = 122, error message = 'Disk quota exceeded'
+    major: Low-level I/O
+    minor: Unable to close file
+Issue closing file
+The exit code was: -11
+
+
+re-ran testShell with new test folder, containing only 1 raw file
+worked very well
+However, when running lastools:
+
+got error message:
+ERROR: cannot open file 'Z:\s2559258\dissertation_AH24\data\test\sim_las\826000.0_1149352.8_p149_n104.las'
+ERROR: cannot open laswriterlas with file name 'Z:\s2559258\dissertation_AH24\data\test\sim_las\826000.0_1149352.8_p149_n104.las'
+ERROR: could not open laswriter
+
+
+moved to M: drive: same code, worked there...

@@ -216,7 +216,7 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            # "wind_river",
+            "wind_river",
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
