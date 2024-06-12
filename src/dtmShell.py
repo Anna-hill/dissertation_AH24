@@ -71,6 +71,7 @@ class dtmCreation(object):
             "paracou": 32622,
             "robson_creek": 28355,
             "wind_river": 32610,
+            "test": 32616,
         }
         if study_site in self.mapping:
             return self.mapping[study_site]
@@ -236,6 +237,13 @@ class dtmCreation(object):
         self.flat_arr1 = array1.flatten()
         self.flat_arr2 = array2.flatten()
 
+        print(
+            "flat 1 shape: ",
+            self.flat_arr1.shape,
+            "flat 2 shape: ",
+            self.flat_arr2.shape,
+        )
+
         # make mask of data points
         self.data_mask = self.flat_arr2 != 0
 
@@ -246,6 +254,8 @@ class dtmCreation(object):
         # count no data pixels
         self.no_data_count = np.sum(~self.data_mask)
 
+        if len(self.valid_arr1) == 0 or len(self.valid_arr2) == 0:
+            raise ValueError("No data points found")
         # find rmse
         self.rmse = np.sqrt(mean_squared_error(self.valid_arr1, self.valid_arr2))
 
@@ -345,14 +355,26 @@ class dtmCreation(object):
                 self.als_read = self.als_open.read(1)
                 self.sim_read = self.sim_open.read(1)
 
-                # calculate stats
-                if len(self.als_read) == 0 or len(self.sim_read) == 0:
-                    raise ValueError("No data points found")
-                    continue
-                else:
+                # check array shapes
+                print(
+                    "ALS shape: ",
+                    self.als_read.shape,
+                    " Sim shape: ",
+                    self.sim_read.shape,
+                )
+
+                # If shape is wrong flag arrays
+                if self.als_read.shape == self.sim_read.shape:
+                    # calculate stats
                     self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
                         self.als_read, self.sim_read
                     )
+                else:
+                    # Flag results at end?
+                    self.RMSE = -999
+                    self.rSquared = -999
+                    self.BIAS = -999
+                    self.noData = -999
 
                 # Check metrics look reasonable before appending to results
                 if -1 <= self.rSquared <= 1:
@@ -375,7 +397,13 @@ class dtmCreation(object):
                         template_raster=self.sim_open,
                         nodata=0,
                     )
-
+                elif self.rSquared == -999:
+                    print(f"Significant errors in data, mismatched array shapes")
+                    self.folder_list.append(folder)
+                    self.r2_list.append(self.rSquared)
+                    self.rmse_list.append(self.RMSE)
+                    self.bias_list.append(self.BIAS)
+                    self.noData_list.append(self.noData)
                 else:
                     print(f"{self.sim_tif} - {self.als_tif} has an odd r2")
                     self.folder_list.append(folder)
@@ -427,7 +455,7 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
-            # dtms.createDTM(site)
+            dtms.createDTM(site)
             dtms.compareDTM(site)
 
     # Run on specified site
@@ -435,7 +463,7 @@ if __name__ == "__main__":
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         dtms = dtmCreation()
-        # dtms.createDTM(study_area)
+        dtms.createDTM(study_area)
         dtms.compareDTM(study_area)
 
     t = time.perf_counter() - t

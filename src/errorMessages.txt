@@ -40,3 +40,20 @@ ERROR: could not open laswriter
 
 
 moved to M: drive: same code, worked there...
+
+
+running DTM shell in M: drive
+
+Following error in calcMetrics;
+
+Traceback (most recent call last):
+  File "/home/s2559258/dissertation/diss_code24/src/dtmShell.py", line 438, in <module>
+    dtms.compareDTM(study_area)
+  File "/home/s2559258/dissertation/diss_code24/src/dtmShell.py", line 352, in compareDTM
+    self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
+  File "/home/s2559258/dissertation/diss_code24/src/dtmShell.py", line 244, in calcMetrics
+    self.valid_arr1 = self.flat_arr1[self.data_mask]
+IndexError: boolean index did not match indexed array along dimension 0; dimension is 726 but corresponding boolean dimension is 1
+
+answer: second array is wrong shape (only 1 long)
+worked around by adding no data flags (-999) where this happens
