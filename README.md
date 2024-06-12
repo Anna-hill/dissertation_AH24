@@ -18,12 +18,15 @@ python3 src/testShell.py --studyarea Bonaly --noise 104 --pcount 149
 
 python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
 
-python3 src/testShell.py --studyarea wind_river
+python3 src/testShell.py --studyarea test --noise -1 --pcount 149
 
 
 python3 src/dtmShell.py --everywhere -1
 python3 src/dtmShell.py --studyarea Bonaly
 python3 src/dtmShell.py --studyarea hubbard_brook
+python3 src/dtmShell.py --studyarea la_selva
+
+
 
 run 1: hansen vals
 - exc. or

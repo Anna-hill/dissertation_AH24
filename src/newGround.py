@@ -9,3 +9,17 @@
 
 # https://laspy.readthedocs.io/en/latest/lessbasic.html
 # add classification as an extra dim???
+
+
+
+# pseudo code
+
+# read las file with laspy
+
+# run nearest neightbour
+# if nearest neighbour has below threshold euclidian distance, remove point
+# in such a way that does not remove all points
+
+# pts points don't have DN???
+# want lowest cluster in Z - or try to interpolate?????
+# but with interpolation how to know where you are wrong???

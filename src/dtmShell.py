@@ -254,6 +254,9 @@ class dtmCreation(object):
         # count no data pixels
         self.no_data_count = np.sum(~self.data_mask)
 
+        # Find proportion of pixels which have no data
+        self.no_data_prop = self.no_data_count / len(self.flat_arr1)
+
         if len(self.valid_arr1) == 0 or len(self.valid_arr2) == 0:
             raise ValueError("No data points found")
         # find rmse
@@ -264,7 +267,7 @@ class dtmCreation(object):
 
         # calculate bias
         self.bias = np.mean(self.valid_arr1 - self.valid_arr2)
-        return self.rmse, self.r2, self.bias, self.no_data_count
+        return self.rmse, self.r2, self.bias, self.no_data_prop
 
     def diffDTM(self, arr1, arr2, no_data_value):
         """Create tif of difference between 2 DEMs
@@ -291,7 +294,7 @@ class dtmCreation(object):
 
         return self.result
 
-    def plotImage(self, raster, outname):
+    def plotImage(self, raster, outname, folder):
         """Make a figure from the difference DTM
 
         Args:
@@ -302,7 +305,7 @@ class dtmCreation(object):
         ax1 = fig.add_subplot(111)
         fig1 = ax1.imshow(raster, origin="lower", cmap="Spectral")
         fig.colorbar(fig1, ax=ax1, label="Elevation difference(m)")
-        plt.savefig(f"figures/difference/{outname}.png")
+        plt.savefig(f"figures/difference/{folder}/{outname}.png")
         plt.clf()
 
     def compareDTM(self, folder):
@@ -389,7 +392,7 @@ class dtmCreation(object):
 
                     # create difference raster
                     self.difference = self.diffDTM(self.als_read, self.sim_read, 0)
-                    self.plotImage(self.difference, clip_match)
+                    self.plotImage(self.difference, clip_match, folder)
                     self.outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
                     self.rasterio_write(
                         data=self.difference,
@@ -424,7 +427,7 @@ class dtmCreation(object):
             "RMSE": self.rmse_list,
             "R2": self.r2_list,
             "Bias": self.bias_list,
-            "NoData_Count": self.noData_list,
+            "NoData_Prop": self.noData_list,
         }
 
         resultsDf = pd.DataFrame(results)
