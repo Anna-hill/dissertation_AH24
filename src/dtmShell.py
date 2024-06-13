@@ -255,7 +255,7 @@ class dtmCreation(object):
         self.no_data_count = np.sum(~self.data_mask)
 
         # Find proportion of pixels which have no data
-        self.no_data_prop = self.no_data_count / len(self.flat_arr1)
+        self.data_count = len(self.flat_arr1)
 
         if len(self.valid_arr1) == 0 or len(self.valid_arr2) == 0:
             raise ValueError("No data points found")
@@ -267,7 +267,7 @@ class dtmCreation(object):
 
         # calculate bias
         self.bias = np.mean(self.valid_arr1 - self.valid_arr2)
-        return self.rmse, self.r2, self.bias, self.no_data_prop
+        return self.rmse, self.r2, self.bias, self.no_data_count, self.data_count
 
     def diffDTM(self, arr1, arr2, no_data_value):
         """Create tif of difference between 2 DEMs
@@ -336,6 +336,7 @@ class dtmCreation(object):
         self.bias_list = []
         self.file_name_saved = []
         self.noData_list = []
+        self.lenData_list = []
         self.folder_list = []
 
         # Multiple sim files for each als
@@ -369,8 +370,8 @@ class dtmCreation(object):
                 # If shape is wrong flag arrays
                 if self.als_read.shape == self.sim_read.shape:
                     # calculate stats
-                    self.RMSE, self.rSquared, self.BIAS, self.noData = self.calcMetrics(
-                        self.als_read, self.sim_read
+                    self.RMSE, self.rSquared, self.BIAS, self.noData, self.lenData = (
+                        self.calcMetrics(self.als_read, self.sim_read)
                     )
                 else:
                     # Flag results at end?
@@ -378,6 +379,7 @@ class dtmCreation(object):
                     self.rSquared = -999
                     self.BIAS = -999
                     self.noData = -999
+                    self.lenData = -999
 
                 # Check metrics look reasonable before appending to results
                 if -1 <= self.rSquared <= 1:
@@ -386,6 +388,7 @@ class dtmCreation(object):
                     self.rmse_list.append(self.RMSE)
                     self.bias_list.append(self.BIAS)
                     self.noData_list.append(self.noData)
+                    self.lenData_list.append(self.lenData)
                     print(
                         f"RMSE is: {self.RMSE}, R² is: {self.rSquared}, bias: {self.BIAS}"
                     )
@@ -407,6 +410,7 @@ class dtmCreation(object):
                     self.rmse_list.append(self.RMSE)
                     self.bias_list.append(self.BIAS)
                     self.noData_list.append(self.noData)
+                    self.lenData_list.append(self.lenData)
                 else:
                     print(f"{self.sim_tif} - {self.als_tif} has an odd r2")
                     self.folder_list.append(folder)
@@ -414,6 +418,7 @@ class dtmCreation(object):
                     self.rmse_list.append(0)
                     self.bias_list.append(0)
                     self.noData_list.append(self.noData)
+                    self.lenData_list.append(self.lenData)
 
         self.nPhotons = self.removeStrings(nPhotons_list)
         self.noise = self.removeStrings(noise_list)
@@ -427,7 +432,8 @@ class dtmCreation(object):
             "RMSE": self.rmse_list,
             "R2": self.r2_list,
             "Bias": self.bias_list,
-            "NoData_Prop": self.noData_list,
+            "NoData_count": self.noData_list,
+            "Data_count": self.lenData_list,
         }
 
         resultsDf = pd.DataFrame(results)

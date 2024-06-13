@@ -34,4 +34,6 @@ python3 src/testShell.py --everywhere 1 --noise -1 --pcount 115
 python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
 
 
-# last la selva las file moved to test
+# evening of 12/06
+
+python3 src/testShell.py --everywhere 1 --noise -1 --pcount 149
