@@ -12,6 +12,7 @@ from glob import glob
 from sklearn.metrics import mean_squared_error, r2_score
 from os.path import commonprefix
 import lasBounds
+from canopyCover import findCC
 
 
 def gediCommands():
@@ -189,7 +190,16 @@ class dtmCreation(object):
         return self.matches
 
     def removeStrings(self, mixed_list):
+        """removes alphabet characters from a list of strings containing numbers and letters
+
+        Args:
+            mixed_list (list): list of itewms containing numbers and letters
+
+        Returns:
+            list: list only containing the integers
+        """
         self.number_list = []
+        # Uses regex to find and extract only the digits
         for self.item in mixed_list:
             self.num_str = regex.findall(r"\d+", self.item)
             self.number_list.extend(map(int, self.num_str))
@@ -267,6 +277,7 @@ class dtmCreation(object):
 
         # calculate bias
         self.bias = np.mean(self.valid_arr1 - self.valid_arr2)
+
         return self.rmse, self.r2, self.bias, self.no_data_count, self.data_count
 
     def diffDTM(self, arr1, arr2, no_data_value):
@@ -308,6 +319,18 @@ class dtmCreation(object):
         plt.savefig(f"figures/difference/{folder}/{outname}.png")
         plt.clf()
 
+    def findCCov(self, folder):
+        # cc arrays different shape to als arrays. likely to cause issues so taking out summary stats
+
+        self.cc_Path = f"data/{folder}/als_canopy"
+        self.cc_list = glob(self.cc_Path + "/*.tif")
+        for self.cc_file in self.cc_list:
+            self.clipped_cc = lasBounds.clipNames(self.cc_file, ".tif")
+            self.mean_ccov, self.stdDev_ccov, self.cc_masked = findCC(self.cc_file)
+            self.cc_outname = f"canopy{self.clipped_cc}"
+            self.plotImage(self.cc_masked, self.cc_outname, folder)
+            print("mean CC: ", self.mean_ccov, ", stdev CC: ", self.stdDev_ccov)
+
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
 
@@ -338,9 +361,16 @@ class dtmCreation(object):
         self.noData_list = []
         self.lenData_list = []
         self.folder_list = []
+        self.mean_cc_list = []
+        self.stdDev_cc_list = []
 
         # Multiple sim files for each als
         for self.als_tif, files2 in matched_files.items():
+            # Extract canopy cover from original ALS files
+            # but cc files in a different folder?
+            # self.mean_cc, self.stdDev_cc = self.findCCov(self.als_tif, folder)
+            # self.mean_cc_list.append(self.mean_cc)
+            # self.stdDev_cc_list.append(self.stdDev_cc)
             for self.sim_tif in files2:
                 self.als_open = rasterio.open(self.als_tif)
                 self.sim_open = rasterio.open(self.sim_tif)
@@ -464,16 +494,18 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
-            dtms.createDTM(site)
-            dtms.compareDTM(site)
+            # dtms.createDTM(site)
+            dtms.findCCov(site)
+            # dtms.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         dtms = dtmCreation()
-        dtms.createDTM(study_area)
-        dtms.compareDTM(study_area)
+        # dtms.createDTM(study_area)
+        dtms.findCCov(study_area)
+        # dtms.compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

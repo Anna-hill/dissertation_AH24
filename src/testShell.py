@@ -140,11 +140,13 @@ def runMetric(folder, noise, photons):
     file_list = glob(filePath + "/*.h5")
 
     noise_levels = [
+        0,
         4,
         5.3,
         8,
         15,
         104,
+        149,
     ]  # change values to appropriate noise settings
     photon_count = [149, 115]
 
@@ -212,7 +214,7 @@ if __name__ == "__main__":
             "Bonaly",
             "hubbard_brook",
             "la_selva",
-            "nourages",
+            "nouragues",
             "oak_ridge",
             "paracou",
             "robson_creek",
