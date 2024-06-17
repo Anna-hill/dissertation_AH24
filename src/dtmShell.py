@@ -305,7 +305,7 @@ class dtmCreation(object):
 
         return self.result
 
-    def plotImage(self, raster, outname, folder):
+    def plotImage(self, raster, outname, folder, label, cmap):
         """Make a figure from the difference DTM
 
         Args:
@@ -314,8 +314,8 @@ class dtmCreation(object):
         """
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        fig1 = ax1.imshow(raster, origin="lower", cmap="Spectral")
-        fig.colorbar(fig1, ax=ax1, label="Elevation difference(m)")
+        fig1 = ax1.imshow(raster, origin="lower", cmap=cmap)
+        fig.colorbar(fig1, ax=ax1, label=label)
         plt.savefig(f"figures/difference/{folder}/{outname}.png")
         plt.clf()
 
@@ -328,7 +328,9 @@ class dtmCreation(object):
             self.clipped_cc = lasBounds.clipNames(self.cc_file, ".tif")
             self.mean_ccov, self.stdDev_ccov, self.cc_masked = findCC(self.cc_file)
             self.cc_outname = f"canopy{self.clipped_cc}"
-            self.plotImage(self.cc_masked, self.cc_outname, folder)
+            self.plotImage(
+                self.cc_masked, self.cc_outname, folder, "Canopy Cover (%)", "Greens"
+            )
             print("mean CC: ", self.mean_ccov, ", stdev CC: ", self.stdDev_ccov)
 
     def compareDTM(self, folder):
@@ -425,7 +427,13 @@ class dtmCreation(object):
 
                     # create difference raster
                     self.difference = self.diffDTM(self.als_read, self.sim_read, 0)
-                    self.plotImage(self.difference, clip_match, folder)
+                    self.plotImage(
+                        self.difference,
+                        clip_match,
+                        folder,
+                        "Elevation difference(m)",
+                        "Spectral",
+                    )
                     self.outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
                     self.rasterio_write(
                         data=self.difference,
@@ -494,18 +502,18 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
-            # dtms.createDTM(site)
+            dtms.createDTM(site)
             dtms.findCCov(site)
-            # dtms.compareDTM(site)
+            dtms.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         dtms = dtmCreation()
-        # dtms.createDTM(study_area)
+        dtms.createDTM(study_area)
         dtms.findCCov(study_area)
-        # dtms.compareDTM(study_area)
+        dtms.compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

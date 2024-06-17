@@ -56,8 +56,9 @@ def findCC(tif):
 
 """if __name__ == "__main__":
     file = "data/test/als_canopy/000073_las_dns.tif"
-    mean, stddev = findCC(file)
+    mean, stddev, raster = findCC(file)
     print("mean CC is ", mean, "StdDev is ", stddev)
 
     # file2 = "data/test/als_dtm/826000.0_1149352.8.tif"
-    # findCC(file2)"""
+    # findCC(file2)
+"""
