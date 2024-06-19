@@ -8,6 +8,7 @@ import argparse
 import rasterio
 import regex
 import matplotlib.pyplot as plt
+import numpy.ma as ma
 from glob import glob
 from sklearn.metrics import mean_squared_error, r2_score
 from os.path import commonprefix
@@ -427,8 +428,11 @@ class dtmCreation(object):
 
                     # create difference raster
                     self.difference = self.diffDTM(self.als_read, self.sim_read, 0)
+                    self.masked_diference = ma.masked_where(
+                        self.difference == 0, self.difference
+                    )
                     self.plotImage(
-                        self.difference,
+                        self.masked_diference,
                         clip_match,
                         folder,
                         "Elevation difference(m)",
@@ -502,7 +506,7 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             dtms = dtmCreation()
-            dtms.createDTM(site)
+            # dtms.createDTM(site)
             dtms.findCCov(site)
             dtms.compareDTM(site)
 
@@ -511,7 +515,7 @@ if __name__ == "__main__":
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         dtms = dtmCreation()
-        dtms.createDTM(study_area)
+        # dtms.createDTM(study_area)
         dtms.findCCov(study_area)
         dtms.compareDTM(study_area)
 
