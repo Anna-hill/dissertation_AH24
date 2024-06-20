@@ -13,7 +13,7 @@ from glob import glob
 from sklearn.metrics import mean_squared_error, r2_score
 from os.path import commonprefix
 import lasBounds
-from canopyCover import findCC
+from canopyCover import findCC, read_raster_and_extent
 
 
 def gediCommands():
@@ -54,31 +54,6 @@ class dtmCreation(object):
         """Empty for now"""
         # make arrays????
         # do all the relevant methods??
-
-    def findEPSG(self, study_site):
-        """Retrieves EPSG code for each study site for DTM creation
-
-        Args:
-            study_site (str): study site name
-
-        Returns:
-            Appropriate EPSG code for site
-        """
-        self.mapping = {
-            "Bonaly": 27700,
-            "hubbard_brook": 32619,
-            "la_selva": 32616,
-            "nourages": 32622,
-            "oak_ridge": 32616,
-            "paracou": 32622,
-            "robson_creek": 28355,
-            "wind_river": 32610,
-            "test": 32616,
-        }
-        if study_site in self.mapping:
-            return self.mapping[study_site]
-
-        return study_site
 
     def interpretName(self, filename):
         rNPhotons = r"[p]+\d+"
@@ -137,7 +112,7 @@ class dtmCreation(object):
             print(
                 f"working on {folder} {idx + 1} of {len(self.als_list)}, bounds = {self.bounds}"
             )
-            self.epsg = self.findEPSG(folder)
+            self.epsg = lasBounds.findEPSG(folder)
             self.outname = f"data/{folder}/als_dtm/{self.bounds[0]}_{self.bounds[1]}"
             self.runMapLidar(self.als_file, 30, self.epsg, self.outname)
 
@@ -154,7 +129,7 @@ class dtmCreation(object):
                 f"working on {folder} {idx + 1} of {len(self.sim_list)}, bounds = {self.bounds}"
             )
             self.bounds = lasBounds.lasMBR(self.sim_file)
-            self.epsg = self.findEPSG(folder)
+            self.epsg = lasBounds.findEPSG(folder)
             self.outname = f"data/{folder}/sim_dtm/{self.clipFile}"
             self.runMapLidar(self.sim_file, 30, self.epsg, self.outname)
 
@@ -189,22 +164,6 @@ class dtmCreation(object):
                 self.matches[self.file1] = self.folder2_dict[self.key]
 
         return self.matches
-
-    def removeStrings(self, mixed_list):
-        """removes alphabet characters from a list of strings containing numbers and letters
-
-        Args:
-            mixed_list (list): list of itewms containing numbers and letters
-
-        Returns:
-            list: list only containing the integers
-        """
-        self.number_list = []
-        # Uses regex to find and extract only the digits
-        for self.item in mixed_list:
-            self.num_str = regex.findall(r"\d+", self.item)
-            self.number_list.extend(map(int, self.num_str))
-        return self.number_list
 
     def rasterio_write(self, data, outname, template_raster, nodata):
         """Create output geotiff from array and pre-exisiting geotiff with rasterio
@@ -370,10 +329,14 @@ class dtmCreation(object):
         # Multiple sim files for each als
         for self.als_tif, files2 in matched_files.items():
             # Extract canopy cover from original ALS files
-            # but cc files in a different folder?
-            # self.mean_cc, self.stdDev_cc = self.findCCov(self.als_tif, folder)
-            # self.mean_cc_list.append(self.mean_cc)
-            # self.stdDev_cc_list.append(self.stdDev_cc)
+
+            # get extent of als and canopy (maybe do this in a different section???)
+            masked_data1, affine1, crs1, extent1 = read_raster_and_extent(file1)
+            # where extents match, matching file pairs
+            # find mean, stdev canopy cover
+            # append to results
+            # make subplots of diff_dtm and CC
+
             for self.sim_tif in files2:
                 self.als_open = rasterio.open(self.als_tif)
                 self.sim_open = rasterio.open(self.sim_tif)
@@ -462,8 +425,8 @@ class dtmCreation(object):
                     self.noData_list.append(self.noData)
                     self.lenData_list.append(self.lenData)
 
-        self.nPhotons = self.removeStrings(nPhotons_list)
-        self.noise = self.removeStrings(noise_list)
+        self.nPhotons = lasBounds.removeStrings(nPhotons_list)
+        self.noise = lasBounds.removeStrings(noise_list)
 
         # append results to dataframe
         results = {

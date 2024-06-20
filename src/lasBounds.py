@@ -20,6 +20,49 @@ def lasMBR(file):
     return MBR
 
 
+def removeStrings(mixed_list):
+    """removes alphabet characters from a list of strings containing numbers and letters
+
+    Args:
+        mixed_list (list): list of items containing numbers and letters
+
+    Returns:
+        list: list only containing the integers
+    """
+    number_list = []
+    # Uses regex to find and extract only the digits
+    for item in mixed_list:
+        num_str = regex.findall(r"\d+", item)
+        number_list.extend(map(int, num_str))
+    return number_list
+
+
+def findEPSG(study_site):
+    """Retrieves EPSG code for each study site for DTM creation
+
+    Args:
+        study_site (str): study site name
+
+    Returns:
+        Appropriate EPSG code for site
+    """
+    mapping = {
+        "Bonaly": 27700,
+        "hubbard_brook": 32619,
+        "la_selva": 32616,
+        "nourages": 32622,
+        "oak_ridge": 32616,
+        "paracou": 32622,
+        "robson_creek": 28355,
+        "wind_river": 32610,
+        "test": 32616,
+    }
+    if study_site in mapping:
+        return mapping[study_site]
+
+    return study_site
+
+
 def clipNames(name, suffix):
     file = name.split("/")[-1]
     clipped = file.rstrip(suffix)
