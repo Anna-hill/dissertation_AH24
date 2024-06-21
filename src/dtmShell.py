@@ -87,7 +87,8 @@ class DtmCreation(object):
                 "-float",
                 "-output",
                 f"{output}",
-            ]
+            ],
+            check=True
         )
 
         print("The exit code was: %d" % create_dtm.returncode)
@@ -477,14 +478,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            # dtm_creator.createDTM(site)
+            dtm_creator.createDTM(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        # dtm_creator.createDTM(study_area)
+        dtm_creator.createDTM(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t

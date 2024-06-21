@@ -18,7 +18,7 @@ python3 src/testShell.py --studyarea Bonaly --noise 104 --pcount 149
 
 python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount 149
 python3 src/testShell.py --studyarea la_selva --noise -1 --pcount 149
-
+python3 src/testShell.py --studyarea robson_creek --noise -1 --pcount 149
 python3 src/testShell.py --studyarea test --noise -1 --pcount 149
 
 

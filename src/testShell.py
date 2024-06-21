@@ -91,7 +91,8 @@ def runGRat(folder):
                 "-output",
                 outname,
                 "-hdf",
-            ]
+            ],
+            check=True,
         )
 
         print("The exit code was: %d" % rat_files.returncode)
@@ -120,7 +121,8 @@ def metricCommand(input, outRoot, nPhotons, noise):
             "-ground",
             "-noiseMult",
             f"{noise}",
-        ]
+        ],
+        check=True,
     )
     print("The exit code was: %d" % gedi_metric.returncode)
 
