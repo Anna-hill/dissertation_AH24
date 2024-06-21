@@ -88,7 +88,7 @@ class DtmCreation(object):
                 "-output",
                 f"{output}",
             ],
-            check=True
+            check=True,
         )
 
         print("The exit code was: %d" % create_dtm.returncode)
@@ -470,7 +470,7 @@ if __name__ == "__main__":
             "Bonaly",
             "hubbard_brook",
             "la_selva",
-            "nourages",
+            "nouragues",
             "oak_ridge",
             "paracou",
             "robson_creek",
