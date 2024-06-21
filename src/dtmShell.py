@@ -287,6 +287,11 @@ class DtmCreation(object):
         std_cc = np.std(raster_data)
         return raster_data, mean_cc, std_cc
 
+    @staticmethod
+    def append_results(results, **kwargs):
+        for key, value in kwargs.items():
+            results[key].append(value)
+
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
 
@@ -311,17 +316,19 @@ class DtmCreation(object):
         rNoise = r"[n]+\d+"
 
         # Open lists to be appended to results
-        noise_list = []
-        nPhotons_list = []
-        r2_list = []
-        rmse_list = []
-        bias_list = []
-        file_name_saved = []
-        noData_list = []
-        lenData_list = []
-        folder_list = []
-        mean_cc_list = []
-        stdDev_cc_list = []
+        results = {
+            "Folder": [],
+            "File": [],
+            "nPhotons": [],
+            "Noise": [],
+            "RMSE": [],
+            "R2": [],
+            "Bias": [],
+            "Mean_Canopy_cover": [],
+            "Std_dev_Canopy_cover": [],
+            "NoData_count": [],
+            "Data_count": [],
+        }
 
         # Multiple sim files for each als
         for als_tif, matched_sim in matched_files.items():
@@ -334,44 +341,43 @@ class DtmCreation(object):
                 clip_match = lasBounds.clipNames(sim_tif, ".tif")
 
                 # Save file name for results
-                file_name_saved.append(clip_match)
+                # file_name_saved.append(clip_match)
+                file_name_saved = clip_match
+
                 # extract noise and photon count vals
-                nPhotons_list.append(
-                    regex.findall(pattern=rNPhotons, string=sim_tif)[0]
-                )
-                noise_list.append(regex.findall(pattern=rNoise, string=sim_tif)[0])
+                nPhotons = regex.findall(pattern=rNPhotons, string=sim_tif)[0]
+                noise = regex.findall(pattern=rNoise, string=sim_tif)[0]
+                nPhotons = lasBounds.removeStrings(nPhotons)
+                noise = lasBounds.removeStrings(noise)
 
                 als_read = als_open.read(1)
                 sim_read = sim_open.read(1)
 
-                # check array shapes
-                print(
-                    "ALS shape: ",
-                    als_read.shape,
-                    " Sim shape: ",
-                    sim_read.shape,
-                )
-
-                # If shape is wrong flag arrays
+                # If array shape is wrong add flags
                 if als_read.shape == sim_read.shape:
                     rmse, rSquared, bias, noData, lenData = self.calc_metrics(
                         als_read, sim_read
                     )
                 else:
-                    rmse = -999
-                    rSquared = -999
-                    bias = -999
-                    noData = -999
-                    lenData = -999
+                    rmse, rSquared, bias, noData, lenData = -999, -999, -999, -999, -999
 
+                # Set default values to ensure df results same len
+                mean_cc = -999
+                stdDev_cc = -999
                 # If metric values look reasonable, save results
                 if -1 <= rSquared <= 1:
-                    folder_list.append(folder)
-                    r2_list.append(rSquared)
-                    rmse_list.append(rmse)
-                    bias_list.append(bias)
-                    noData_list.append(noData)
-                    lenData_list.append(lenData)
+                    self.append_results(
+                        results,
+                        Folder=folder,
+                        File=file_name_saved,
+                        nPhotons=nPhotons,
+                        Noise=noise,
+                        RMSE=rmse,
+                        R2=rSquared,
+                        Bias=bias,
+                        NoData_count=noData,
+                        Data_count=lenData,
+                    )
                     # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
                     # Save and plot tiff of difference with 0 values hidden
@@ -392,19 +398,20 @@ class DtmCreation(object):
                     for canopy_file in canopy_list:
                         canopy_cover_extents = read_raster_and_extent(canopy_file)[3]
 
-                        # match files with 90% intersection of area
+                        # match files with 90% area intersection
                         if (
                             check_intersection(diff_extents, canopy_cover_extents)
                             == True
                         ):
-                            print(diff_outname, canopy_file)
-
                             # Get CC stats
                             canopy_array, mean_cc, stdDev_cc = self.canopy_cover_stats(
                                 canopy_file
                             )
-                            mean_cc_list.append(mean_cc)
-                            stdDev_cc_list.append(stdDev_cc)
+                            """self.append_results(
+                                results,
+                                Mean_Canopy_cover=mean_cc,
+                                Std_dev_Canopy_cover=stdDev_cc,
+                            )"""
                             # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
                             image_name = (
                                 f"figures/difference/{folder}/CC{clip_match}.png"
@@ -414,50 +421,31 @@ class DtmCreation(object):
                             )
                             break
 
-                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
-                        """else:
-                            mean_cc_list.append(-999)
-                            stdDev_cc_list.append(-999)"""
+                    self.append_results(
+                        results,
+                        Mean_Canopy_cover=mean_cc,
+                        Std_dev_Canopy_cover=stdDev_cc,
+                    )
+
+                    # need to append no data value even if no interection, but at this point in the loop will have too many iterations
 
                 # Options for different error cases
-                elif rSquared == -999:
-                    print("Significant errors in data, mismatched array shapes")
-                    folder_list.append(folder)
-                    r2_list.append(rSquared)
-                    rmse_list.append(rmse)
-                    bias_list.append(bias)
-                    noData_list.append(noData)
-                    lenData_list.append(lenData)
-                    mean_cc_list.append(-999)
-                    stdDev_cc_list.append(-999)
                 else:
-                    print(f"{sim_tif} - {als_tif} has an odd r2")
-                    folder_list.append(folder)
-                    r2_list.append(0)
-                    rmse_list.append(0)
-                    bias_list.append(0)
-                    noData_list.append(noData)
-                    lenData_list.append(lenData)
-                    mean_cc_list.append(0)
-                    stdDev_cc_list.append(0)
-
-        nPhotons = lasBounds.removeStrings(nPhotons_list)
-        noise = lasBounds.removeStrings(noise_list)
-
-        # append results to dataframe
-        results = {
-            "Folder": folder_list,
-            "File": file_name_saved,
-            "nPhotons": nPhotons,
-            "Noise": noise,
-            "RMSE": rmse_list,
-            "R2": r2_list,
-            "Bias": bias_list,
-            "Mean Canopy cover": mean_cc_list,
-            "Std dev Canopy cover": stdDev_cc_list,
-            "NoData_count": noData_list,
-            "Data_count": lenData_list,
-        }
+                    print("Significant errors in data, mismatched array shapes")
+                    self.append_results(
+                        results,
+                        Folder=folder,
+                        File=file_name_saved,
+                        nPhotons=nPhotons,
+                        Noise=noise,
+                        RMSE=rmse,
+                        R2=rSquared,
+                        Bias=bias,
+                        NoData_count=noData,
+                        Data_count=lenData,
+                        Mean_Canopy_cover=-999,
+                        Std_dev_Canopy_cover=-999,
+                    )
 
         print(
             len(results["Folder"]),
@@ -467,12 +455,11 @@ class DtmCreation(object):
             len(results["RMSE"]),
             len(results["R2"]),
             len(results["Bias"]),
-            len(results["Mean Canopy cover"]),
-            len(results["Std dev Canopy cover"]),
+            len(results["Mean_Canopy_cover"]),
+            len(results["Std_dev_Canopy_cover"]),
             len(results["NoData_count"]),
             len(results["Data_count"]),
         )
-
         resultsDf = pd.DataFrame(results)
         outCsv = f"data/{folder}/summary_stats_{folder}.csv"
         resultsDf.to_csv(outCsv, index=False)

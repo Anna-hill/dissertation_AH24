@@ -20,21 +20,10 @@ def lasMBR(file):
     return MBR
 
 
-def removeStrings(mixed_list):
-    """removes alphabet characters from a list of strings containing numbers and letters
+def removeStrings(str_int):
 
-    Args:
-        mixed_list (list): list of items containing numbers and letters
-
-    Returns:
-        list: list only containing the integers
-    """
-    number_list = []
-    # Uses regex to find and extract only the digits
-    for item in mixed_list:
-        num_str = regex.findall(r"\d+", item)
-        number_list.extend(map(int, num_str))
-    return number_list
+    match = regex.findall(r"\d+", str_int)
+    return match[0] if match else None
 
 
 def findEPSG(study_site):
