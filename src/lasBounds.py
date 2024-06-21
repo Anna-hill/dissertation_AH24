@@ -39,7 +39,7 @@ def findEPSG(study_site):
         "Bonaly": 27700,
         "hubbard_brook": 32619,
         "la_selva": 32616,
-        "nourages": 32622,
+        "nouragues": 32622,
         "oak_ridge": 32616,
         "paracou": 32622,
         "robson_creek": 28355,

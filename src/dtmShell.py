@@ -214,6 +214,7 @@ class DtmCreation(object):
 
         if len(valid_arr1) == 0 or len(valid_arr2) == 0:
             raise ValueError("No data points found")
+
         # find rmse
         rmse = np.sqrt(mean_squared_error(valid_arr1, valid_arr2))
 
@@ -266,18 +267,6 @@ class DtmCreation(object):
         fig.colorbar(fig1, ax=ax1, label=label)
         plt.savefig(f"figures/difference/{folder}/{outname}.png")
         plt.clf()
-
-    """def findCCov(self, folder):
-        # cc arrays different shape to als arrays. likely to cause issues so taking out summary stats
-
-        cc_Path = f"data/{folder}/als_canopy"
-        cc_list = glob(cc_Path + "/*.tif")
-        for cc_file in cc_list:
-            clipped_cc = lasBounds.clipNames(cc_file, ".tif")
-            mean_ccov, stdDev_ccov, cc_masked = findCC(cc_file)
-            cc_outname = f"canopy{clipped_cc}"
-            self.plot_image(cc_masked, cc_outname, folder, "Canopy Cover (%)", "Greens")
-            print("mean CC: ", mean_ccov, ", stdev CC: ", stdDev_ccov)"""
 
     @staticmethod
     def canopy_cover_stats(file_path):
@@ -353,99 +342,109 @@ class DtmCreation(object):
                 als_read = als_open.read(1)
                 sim_read = sim_open.read(1)
 
-                # If array shape is wrong add flags
-                if als_read.shape == sim_read.shape:
-                    rmse, rSquared, bias, noData, lenData = self.calc_metrics(
-                        als_read, sim_read
-                    )
-                else:
-                    rmse, rSquared, bias, noData, lenData = -999, -999, -999, -999, -999
+                try:
+                    # If array shape is wrong add flags
+                    if als_read.shape == sim_read.shape:
+                        rmse, rSquared, bias, noData, lenData = self.calc_metrics(
+                            als_read, sim_read
+                        )
+                    else:
+                        rmse, rSquared, bias, noData, lenData = (
+                            -999,
+                            -999,
+                            -999,
+                            -999,
+                            -999,
+                        )
 
-                # Set default values to ensure df results same len
-                mean_cc = -999
-                stdDev_cc = -999
-                # If metric values look reasonable, save results
-                if -1 <= rSquared <= 1:
-                    self.append_results(
-                        results,
-                        Folder=folder,
-                        File=file_name_saved,
-                        nPhotons=nPhotons,
-                        Noise=noise,
-                        RMSE=rmse,
-                        R2=rSquared,
-                        Bias=bias,
-                        NoData_count=noData,
-                        Data_count=lenData,
-                    )
-                    # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
+                    # Set default values to ensure df results same len
+                    mean_cc = -999
+                    stdDev_cc = -999
+                    # If metric values look reasonable, save results
+                    if -1 <= rSquared <= 1:
+                        self.append_results(
+                            results,
+                            Folder=folder,
+                            File=file_name_saved,
+                            nPhotons=nPhotons,
+                            Noise=noise,
+                            RMSE=rmse,
+                            R2=rSquared,
+                            Bias=bias,
+                            NoData_count=noData,
+                            Data_count=lenData,
+                        )
+                        # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
-                    # Save and plot tiff of difference with 0 values hidden
-                    difference = self.diff_dtm(als_read, sim_read, 0)
-                    masked_diference = ma.masked_where(difference == 0, difference)
-                    # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
-                    diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
-                    self.rasterio_write(
-                        data=difference,
-                        outname=diff_outname,
-                        template_raster=sim_open,
-                        nodata=0,
-                    )
-                    # find bounds
-                    diff_extents = read_raster_and_extent(diff_outname)[3]
+                        # Save and plot tiff of difference with 0 values hidden
+                        difference = self.diff_dtm(als_read, sim_read, 0)
+                        masked_diference = ma.masked_where(difference == 0, difference)
+                        # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
+                        diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+                        self.rasterio_write(
+                            data=difference,
+                            outname=diff_outname,
+                            template_raster=sim_open,
+                            nodata=0,
+                        )
+                        # find bounds
+                        diff_extents = read_raster_and_extent(diff_outname)[3]
 
-                    # find corresponding canopy cover file:
-                    for canopy_file in canopy_list:
-                        canopy_cover_extents = read_raster_and_extent(canopy_file)[3]
+                        # find corresponding canopy cover file:
+                        for canopy_file in canopy_list:
+                            canopy_cover_extents = read_raster_and_extent(canopy_file)[
+                                3
+                            ]
 
-                        # match files with 90% area intersection
-                        if (
-                            check_intersection(diff_extents, canopy_cover_extents)
-                            == True
-                        ):
-                            # Get CC stats
-                            canopy_array, mean_cc, stdDev_cc = self.canopy_cover_stats(
-                                canopy_file
-                            )
-                            """self.append_results(
-                                results,
-                                Mean_Canopy_cover=mean_cc,
-                                Std_dev_Canopy_cover=stdDev_cc,
-                            )"""
-                            # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
-                            image_name = (
-                                f"figures/difference/{folder}/CC{clip_match}.png"
-                            )
-                            two_plots(
-                                masked_diference, canopy_array, image_name, clip_match
-                            )
-                            break
+                            # match files with 90% area intersection
+                            if (
+                                check_intersection(diff_extents, canopy_cover_extents)
+                                == True
+                            ):
+                                # Get CC stats
+                                canopy_array, mean_cc, stdDev_cc = (
+                                    self.canopy_cover_stats(canopy_file)
+                                )
+                                # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
+                                image_name = (
+                                    f"figures/difference/{folder}/CC{clip_match}.png"
+                                )
+                                two_plots(
+                                    masked_diference,
+                                    canopy_array,
+                                    image_name,
+                                    clip_match,
+                                )
+                                break
 
-                    self.append_results(
-                        results,
-                        Mean_Canopy_cover=mean_cc,
-                        Std_dev_Canopy_cover=stdDev_cc,
-                    )
+                        self.append_results(
+                            results,
+                            Mean_Canopy_cover=mean_cc,
+                            Std_dev_Canopy_cover=stdDev_cc,
+                        )
 
-                    # need to append no data value even if no interection, but at this point in the loop will have too many iterations
+                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
 
-                # Options for different error cases
-                else:
-                    print("Significant errors in data, mismatched array shapes")
-                    self.append_results(
-                        results,
-                        Folder=folder,
-                        File=file_name_saved,
-                        nPhotons=nPhotons,
-                        Noise=noise,
-                        RMSE=rmse,
-                        R2=rSquared,
-                        Bias=bias,
-                        NoData_count=noData,
-                        Data_count=lenData,
-                        Mean_Canopy_cover=-999,
-                        Std_dev_Canopy_cover=-999,
-                    )
+                    # Options for different error cases
+                    else:
+                        print("Significant errors in data, mismatched array shapes")
+                        self.append_results(
+                            results,
+                            Folder=folder,
+                            File=file_name_saved,
+                            nPhotons=nPhotons,
+                            Noise=noise,
+                            RMSE=rmse,
+                            R2=rSquared,
+                            Bias=bias,
+                            NoData_count=noData,
+                            Data_count=lenData,
+                            Mean_Canopy_cover=-999,
+                            Std_dev_Canopy_cover=-999,
+                        )
+                except ValueError as e:
+                    print(f"{sim_tif} ignored due to error: {e}")
+                    continue
 
         print(
             len(results["Folder"]),
@@ -460,6 +459,7 @@ class DtmCreation(object):
             len(results["NoData_count"]),
             len(results["Data_count"]),
         )
+
         resultsDf = pd.DataFrame(results)
         outCsv = f"data/{folder}/summary_stats_{folder}.csv"
         resultsDf.to_csv(outCsv, index=False)
@@ -478,24 +478,24 @@ if __name__ == "__main__":
     if all_sites < 0:
         study_sites = [
             "Bonaly",
-            "hubbard_brook",
-            "la_selva",
-            "nouragues",
-            "oak_ridge",
             "paracou",
+            "oak_ridge",
+            "nouragues",
+            "la_selva",
+            "hubbard_brook",
             "robson_creek",
             "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            # dtm_creator.createDTM(site)
+            dtm_creator.createDTM(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        # dtm_creator.createDTM(study_area)
+        dtm_creator.createDTM(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t

@@ -70,7 +70,7 @@ def read_raster_and_extent(file_path):
     return masked_data, affine, crs, extent
 
 
-def check_intersection(extent1, extent2, threshold=0.9):
+def check_intersection(extent1, extent2, threshold=0.8):
     """Check whether two polygons have intersecting areas over a given threshold
 
     Args:
