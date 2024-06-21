@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
-from canopyCover import findCC, read_raster_and_extent
+from canopyCover import findCC, read_raster_and_extent, check_intersection
 from plotting import two_plots
 
 
@@ -267,7 +267,7 @@ class DtmCreation(object):
         plt.savefig(f"figures/difference/{folder}/{outname}.png")
         plt.clf()
 
-    def findCCov(self, folder):
+    """def findCCov(self, folder):
         # cc arrays different shape to als arrays. likely to cause issues so taking out summary stats
 
         cc_Path = f"data/{folder}/als_canopy"
@@ -277,7 +277,7 @@ class DtmCreation(object):
             mean_ccov, stdDev_ccov, cc_masked = findCC(cc_file)
             cc_outname = f"canopy{clipped_cc}"
             self.plot_image(cc_masked, cc_outname, folder, "Canopy Cover (%)", "Greens")
-            print("mean CC: ", mean_ccov, ", stdev CC: ", stdDev_ccov)
+            print("mean CC: ", mean_ccov, ", stdev CC: ", stdDev_ccov)"""
 
     @staticmethod
     def canopy_cover_stats(file_path):
@@ -372,7 +372,7 @@ class DtmCreation(object):
                     bias_list.append(bias)
                     noData_list.append(noData)
                     lenData_list.append(lenData)
-                    print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
+                    # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
                     # Save and plot tiff of difference with 0 values hidden
                     difference = self.diff_dtm(als_read, sim_read, 0)
@@ -392,8 +392,12 @@ class DtmCreation(object):
                     for canopy_file in canopy_list:
                         canopy_cover_extents = read_raster_and_extent(canopy_file)[3]
 
-                        # match files by bounds
-                        if diff_extents.intersects(canopy_cover_extents):
+                        # match files with 90% intersection of area
+                        if (
+                            check_intersection(diff_extents, canopy_cover_extents)
+                            == True
+                        ):
+                            print(diff_outname, canopy_file)
 
                             # Get CC stats
                             canopy_array, mean_cc, stdDev_cc = self.canopy_cover_stats(
@@ -401,7 +405,7 @@ class DtmCreation(object):
                             )
                             mean_cc_list.append(mean_cc)
                             stdDev_cc_list.append(stdDev_cc)
-                            print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
+                            # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
                             image_name = (
                                 f"figures/difference/{folder}/CC{clip_match}.png"
                             )
@@ -409,6 +413,11 @@ class DtmCreation(object):
                                 masked_diference, canopy_array, image_name, clip_match
                             )
                             break
+
+                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
+                        """else:
+                            mean_cc_list.append(-999)
+                            stdDev_cc_list.append(-999)"""
 
                 # Options for different error cases
                 elif rSquared == -999:
@@ -450,6 +459,20 @@ class DtmCreation(object):
             "Data_count": lenData_list,
         }
 
+        print(
+            len(results["Folder"]),
+            len(results["File"]),
+            len(results["nPhotons"]),
+            len(results["Noise"]),
+            len(results["RMSE"]),
+            len(results["R2"]),
+            len(results["Bias"]),
+            len(results["Mean Canopy cover"]),
+            len(results["Std dev Canopy cover"]),
+            len(results["NoData_count"]),
+            len(results["Data_count"]),
+        )
+
         resultsDf = pd.DataFrame(results)
         outCsv = f"data/{folder}/summary_stats_{folder}.csv"
         resultsDf.to_csv(outCsv, index=False)
@@ -478,14 +501,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            dtm_creator.createDTM(site)
+            # dtm_creator.createDTM(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        dtm_creator.createDTM(study_area)
+        # dtm_creator.createDTM(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t

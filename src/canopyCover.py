@@ -70,6 +70,31 @@ def read_raster_and_extent(file_path):
     return masked_data, affine, crs, extent
 
 
+def check_intersection(extent1, extent2, threshold=0.9):
+    """Check whether two polygons have intersecting areas over a given threshold
+
+    Args:
+        extent1 (shapely polygon): bounding box of tif file
+        extent2 (shapely polygon): bounding box of tif file
+        threshold (float, optional): level of interesction needed. Defaults to 0.9.
+
+    Returns:
+        bool: whether or not intersection is significant
+    """
+
+    intersection = extent1.intersection(extent2)
+    if intersection.is_empty:
+        return False
+
+    intersection_area = intersection.area
+    extent1_area = extent1.area
+    extent2_area = extent2.area
+
+    return (intersection_area / extent1_area >= threshold) and (
+        intersection_area / extent2_area >= threshold
+    )
+
+
 # Function to resample raster to match another raster's shape and transform
 def resample_raster(
     src_data, src_transform, src_crs, dst_shape, dst_transform, dst_crs
