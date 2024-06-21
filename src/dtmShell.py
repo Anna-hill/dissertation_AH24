@@ -13,6 +13,7 @@ import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
 from canopyCover import findCC, read_raster_and_extent
+from plotting import two_plots
 
 
 def gediCommands():
@@ -249,6 +250,7 @@ class DtmCreation(object):
 
     @staticmethod
     def plot_image(raster, outname, folder, label, cmap):
+        # save to plotting
         """Make a figure from the difference DTM
 
         Args:
@@ -276,46 +278,13 @@ class DtmCreation(object):
             self.plot_image(cc_masked, cc_outname, folder, "Canopy Cover (%)", "Greens")
             print("mean CC: ", mean_ccov, ", stdev CC: ", stdDev_ccov)
 
-    def canopy_Cover(self, folder):
-
-        # Extract canopy cover from original ALS files
-        canopy_cover_dir = f"data/{folder}/als_canopy"
-        dtm_dir = f"data/{folder}/diff_dtm"
-
-        # List all files
-        canopy_cover_files = sorted(glob(canopy_cover_dir + "/*.tif"))
-        diff_files = sorted(glob(dtm_dir + "/*.tif"))
-        # get extent of als and canopy
-        # need to do this inside diff dtm loop perhaps? inefficient if so?
-        dtm_extents = {f: read_raster_and_extent(f)[3] for f in diff_files}
-        canopy_cover_extents = {
-            f: read_raster_and_extent(f)[3] for f in canopy_cover_files
-        }
-
-        # where extents match, matching file pairs
-        matches = []
-        for dtm_file, dtm_extent in dtm_extents.items():
-            for canopy_file, canopy_extent in canopy_cover_extents.items():
-                if dtm_extent.intersects(canopy_extent):
-                    matches.append((dtm_file, canopy_file))
-                    break
-
-        for dtm_file, canopy_file in matches:
-            dtm, _, _, _ = read_raster_and_extent(dtm_file)
-            canopy_cover, _, _, _ = read_raster_and_extent(canopy_file)
-
-            # find mean, stdev canopy cover
-            mean_canopy = np.mean(canopy_cover)
-            std_canopy = np.std(canopy_cover)
-            print(mean_canopy, std_canopy)
-
-            # check looping
-            print(mean_canopy, std_canopy)
-
-        # append to results
-        # make subplots of diff_dtm and CC
-
-        # return self.mean_canopy, self.std_canopy
+    @staticmethod
+    def canopy_cover_stats(file_path):
+        # file path defined in containing method (compare)
+        raster_data, _, _, _ = read_raster_and_extent(file_path)
+        mean_cc = np.mean(raster_data)
+        std_cc = np.std(raster_data)
+        return raster_data, mean_cc, std_cc
 
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
@@ -326,11 +295,14 @@ class DtmCreation(object):
 
         als_path = f"data/{folder}/als_dtm"
         sim_path = f"data/{folder}/sim_dtm"
+        canopy_path = f"data/{folder}/als_canopy"
 
         als_list = glob(als_path + "/*.tif")
         sim_list = glob(sim_path + "/*.tif")
+        canopy_list = glob(canopy_path + "/*.tif")
 
         # Pair up ALS and sim files so they can be compared
+        # regex quicker than opening all files?
         matched_files = self.match_files(als_list, sim_list)
 
         # Define regex patterns to extract info from file names
@@ -347,8 +319,8 @@ class DtmCreation(object):
         noData_list = []
         lenData_list = []
         folder_list = []
-        # mean_cc_list = []
-        # stdDev_cc_list = []
+        mean_cc_list = []
+        stdDev_cc_list = []
 
         # Multiple sim files for each als
         for als_tif, matched_sim in matched_files.items():
@@ -391,6 +363,7 @@ class DtmCreation(object):
                     noData = -999
                     lenData = -999
 
+                # If metric values look reasonable, save results
                 if -1 <= rSquared <= 1:
                     folder_list.append(folder)
                     r2_list.append(rSquared)
@@ -400,22 +373,43 @@ class DtmCreation(object):
                     lenData_list.append(lenData)
                     print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
+                    # Save and plot tiff of difference with 0 values hidden
                     difference = self.diff_dtm(als_read, sim_read, 0)
                     masked_diference = ma.masked_where(difference == 0, difference)
-                    self.plot_image(
-                        masked_diference,
-                        clip_match,
-                        folder,
-                        "Elevation difference(m)",
-                        "Spectral",
-                    )
-                    outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+                    # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
+                    diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
                     self.rasterio_write(
                         data=difference,
-                        outname=outname,
+                        outname=diff_outname,
                         template_raster=sim_open,
                         nodata=0,
                     )
+                    # find bounds
+                    diff_extents = read_raster_and_extent(diff_outname)[3]
+
+                    # find corresponding canopy cover file:
+                    for canopy_file in canopy_list:
+                        canopy_cover_extents = read_raster_and_extent(canopy_file)[3]
+
+                        # match files by bounds
+                        if diff_extents.intersects(canopy_cover_extents):
+
+                            # Get CC stats
+                            canopy_array, mean_cc, stdDev_cc = self.canopy_cover_stats(
+                                canopy_file
+                            )
+                            mean_cc_list.append(mean_cc)
+                            stdDev_cc_list.append(stdDev_cc)
+                            print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
+                            image_name = (
+                                f"figures/difference/{folder}/CC{clip_match}.png"
+                            )
+                            two_plots(
+                                masked_diference, canopy_array, image_name, clip_match
+                            )
+                            break
+
+                # Options for different error cases
                 elif rSquared == -999:
                     print("Significant errors in data, mismatched array shapes")
                     folder_list.append(folder)
@@ -424,6 +418,8 @@ class DtmCreation(object):
                     bias_list.append(bias)
                     noData_list.append(noData)
                     lenData_list.append(lenData)
+                    mean_cc_list.append(-999)
+                    stdDev_cc_list.append(-999)
                 else:
                     print(f"{sim_tif} - {als_tif} has an odd r2")
                     folder_list.append(folder)
@@ -432,6 +428,8 @@ class DtmCreation(object):
                     bias_list.append(0)
                     noData_list.append(noData)
                     lenData_list.append(lenData)
+                    mean_cc_list.append(0)
+                    stdDev_cc_list.append(0)
 
         nPhotons = lasBounds.removeStrings(nPhotons_list)
         noise = lasBounds.removeStrings(noise_list)
@@ -445,6 +443,8 @@ class DtmCreation(object):
             "RMSE": rmse_list,
             "R2": r2_list,
             "Bias": bias_list,
+            "Mean Canopy cover": mean_cc_list,
+            "Std dev Canopy cover": stdDev_cc_list,
             "NoData_count": noData_list,
             "Data_count": lenData_list,
         }
@@ -478,8 +478,6 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             # dtm_creator.createDTM(site)
-            dtm_creator.canopy_Cover(site)
-            # dtm_creator.findCCov(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
@@ -487,8 +485,6 @@ if __name__ == "__main__":
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         # dtm_creator.createDTM(study_area)
-        dtm_creator.canopy_Cover(study_area)
-        # dtm_creator.findCCov(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t

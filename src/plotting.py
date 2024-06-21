@@ -12,7 +12,7 @@ from canopyCover import read_raster_and_extent
 from lasBounds import removeStrings, findEPSG
 
 
-def two_plots(data, data2, outname, epsg):
+def two_plots(data, data2, outname, title):
     """Plot 2 datasets on a map as subplots
 
     Args:
@@ -22,62 +22,36 @@ def two_plots(data, data2, outname, epsg):
     """
 
     fig = plt.figure()
-    ax1 = fig.add_subplot(121, projection=ccrs.epsg(epsg))
+    ax1 = fig.add_subplot(121)
     fig1 = ax1.imshow(
         data,
         origin="lower",
-        transform=ccrs.epsg(epsg),
-        cmap="Blues",
+        cmap="Spectral",
     )
-    fig.colorbar(fig1, ax=ax1, label="Elevation (m)")
-    ax1.gridlines(draw_labels=True)
+    plt.title(title, loc="center")
+    fig.colorbar(
+        fig1,
+        ax=ax1,
+        label="Elevation difference (m)",
+        orientation="horizontal",
+        pad=0.1,
+    )
 
-    ax2 = fig.add_subplot(122, projection=ccrs.epsg(epsg))
+    ax2 = fig.add_subplot(122)
 
     fig2 = ax2.imshow(
         data2,
         origin="lower",
-        transform=ccrs.epsg(epsg),
-        cmap="Blues",
+        cmap="Greens",
     )
-    fig.colorbar(fig2, ax=ax2, label="Elevation (m)")
-    ax2.gridlines(draw_labels=True, alpha=0.5)
-    fig.savefig(f"figures/difference/{outname}.png")
+    fig.colorbar(
+        fig2, ax=ax2, label="Canopy Cover (%)", orientation="horizontal", pad=0.1
+    )
+    fig.savefig(outname)
     fig.clf()
 
 
-def plot_elev(data, outname, epsg):
-    """Plot the results of the volume change calculation
-
-    Args:
-        data (2d array): Image array
-        outname (str): Output file name
-    """
-    # https://github.com/SciTools/cartopy/issues/1946?fbclid=IwAR0iHP3qHFVclMQRqQYG5AlZwLfODSGWDkJDchUSzR55hXK_b9A8v3Uvits
-    fdata = np.ma.masked_where(data == 0, data)
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111, projection=ccrs.epsg(epsg))
-
-    fig1 = ax1.imshow(
-        fdata,
-        origin="lower",
-        transform=ccrs.SouthPolarStereo(),
-        norm=colors.SymLogNorm(
-            linthresh=0.03, linscale=0.03, vmin=-1.0, vmax=1.0, base=10
-        ),
-        cmap="RdYlBu",
-    )
-
-    fig.colorbar(fig1, ax=ax1, label="Elevation Change(m) - Log Normalised")
-    ax1.gridlines(draw_labels=True, alpha=0.5)
-
-    plt.savefig(f"{outname}.png")
-    plt.clf()
-    print(f"Figure saved to {outname}.png")
-
-
-def one_plot(data, outname, epsg):
+def one_plot(data, outname):
     """Make a map from a single dataset
 
     Args:
@@ -87,15 +61,12 @@ def one_plot(data, outname, epsg):
     fdata = np.ma.masked_less(data, -998)
 
     fig = plt.figure()
-    ax1 = fig.add_subplot(111, projection=ccrs.epsg(epsg))
+    ax1 = fig.add_subplot(111)
     fig1 = ax1.imshow(
         fdata,
         origin="lower",
-        transform=ccrs.SouthPolarStereo(),
         cmap="Blues",
     )
-    ax1.gridlines(draw_labels=True, alpha=0.5)
-
     fig.colorbar(fig1, ax=ax1, label="Elevation (m)")
 
     plt.savefig(f"{outname}.png")
@@ -123,7 +94,7 @@ if __name__ == "__main__":
     masked_data1, affine1, crs1, extent1 = read_raster_and_extent(file1)
     masked_data2, affine2, crs2, extent2 = read_raster_and_extent(file2)
     epsg = findEPSG(folder)
-    two_plots(masked_data1, masked_data2, outname, epsg)
+    two_plots(masked_data1, masked_data2, outname)
 
     # Test efficiency
     t = time.perf_counter() - t
