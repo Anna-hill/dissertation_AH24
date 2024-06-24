@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
-from canopyCover import findCC, read_raster_and_extent, check_intersection
+from canopyCover import (
+    findCC,
+    read_raster_and_extent,
+    check_intersection,
+    resample_raster,
+)
 from plotting import two_plots
 
 
@@ -102,7 +107,7 @@ class DtmCreation(object):
         alsPath = f"data/{folder}/raw_las"
         simPath = f"data/{folder}/sim_ground"
 
-        # Create ALS dtm
+        # Create ALS dtm at higher resolution - resampled later
         als_list = glob(alsPath + "/*.las")
         for idx, als_file in enumerate(als_list):
             bounds = lasBounds.lasMBR(als_file)
@@ -111,7 +116,7 @@ class DtmCreation(object):
             )
             epsg = lasBounds.findEPSG(folder)
             outname = f"data/{folder}/als_dtm/{bounds[0]}_{bounds[1]}"
-            self.runMapLidar(als_file, 30, epsg, outname)
+            self.runMapLidar(als_file, 10, epsg, outname)
 
         # Create simulated data DTM
         sim_list = glob(simPath + "/*.las")
@@ -167,6 +172,7 @@ class DtmCreation(object):
             template_raster (geotiff): existing geotiff to replicate metadata
             nodata (int): no data value
         """
+        template_raster = rasterio.open(template_raster)
 
         with rasterio.open(
             outname,
@@ -269,9 +275,9 @@ class DtmCreation(object):
         plt.clf()
 
     @staticmethod
-    def canopy_cover_stats(file_path):
+    def canopy_cover_stats(raster_data):
         # file path defined in containing method (compare)
-        raster_data, _, _, _ = read_raster_and_extent(file_path)
+        # raster_data, _, _, _ = read_raster_and_extent(file_path)
         mean_cc = np.mean(raster_data)
         std_cc = np.std(raster_data)
         return raster_data, mean_cc, std_cc
@@ -321,10 +327,25 @@ class DtmCreation(object):
 
         # Multiple sim files for each als
         for als_tif, matched_sim in matched_files.items():
-
             for sim_tif in matched_sim:
-                als_open = rasterio.open(als_tif)
-                sim_open = rasterio.open(sim_tif)
+                print(als_tif, sim_tif, "match")
+                # open tifs and get extent
+                als_array, als_affine, als_crs, _ = read_raster_and_extent(als_tif)
+                sim_array, sim_affine, sim_crs, sim_extent = read_raster_and_extent(
+                    sim_tif
+                )
+
+                # resample als to align with sim
+                resampled_als = resample_raster(
+                    als_array,
+                    als_affine,
+                    als_crs,
+                    sim_array.shape,
+                    sim_affine,
+                    sim_crs,
+                )
+                # remove nodata values
+                resampled_als = ma.masked_where(resampled_als == -999, resampled_als)
 
                 # Save shortened file name to name things with later
                 clip_match = lasBounds.clipNames(sim_tif, ".tif")
@@ -339,19 +360,22 @@ class DtmCreation(object):
                 nPhotons = lasBounds.removeStrings(nPhotons)
                 noise = lasBounds.removeStrings(noise)
 
-                als_read = als_open.read(1)
-                sim_read = sim_open.read(1)
+                print("shapes", resampled_als.shape, sim_array.shape)
 
-                print(als_read.shape, sim_read.shape)
+                # Set default values to ensure df results same len
+                mean_cc = -999
+                stdDev_cc = -999
 
+                # the t/e loop is failing?
                 try:
                     # If array shape is wrong add flags
-                    if als_read.shape == sim_read.shape:
+                    if resampled_als.shape == sim_array.shape:
+
                         rmse, rSquared, bias, noData, lenData = self.calc_metrics(
-                            als_read, sim_read
+                            resampled_als, sim_array
                         )
+                        print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
                     else:
-                        print("Mismatched array shapes")
                         rmse, rSquared, bias, noData, lenData = (
                             -999,
                             -999,
@@ -360,9 +384,6 @@ class DtmCreation(object):
                             -999,
                         )
 
-                    # Set default values to ensure df results same len
-                    mean_cc = -999
-                    stdDev_cc = -999
                     # If metric values look reasonable, save results
                     if -1 <= rSquared <= 1:
                         self.append_results(
@@ -377,38 +398,57 @@ class DtmCreation(object):
                             NoData_count=noData,
                             Data_count=lenData,
                         )
-                        # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
+                        print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
                         # Save and plot tiff of difference with 0 values hidden
-                        difference = self.diff_dtm(als_read, sim_read, 0)
+                        difference = self.diff_dtm(resampled_als, sim_array, 0)
                         masked_diference = ma.masked_where(difference == 0, difference)
                         # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
                         diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
                         self.rasterio_write(
                             data=difference,
                             outname=diff_outname,
-                            template_raster=sim_open,
+                            template_raster=sim_tif,
                             nodata=0,
                         )
                         # find bounds
-                        diff_extents = read_raster_and_extent(diff_outname)[3]
+                        # diff_extents = read_raster_and_extent(diff_outname)[3]
 
                         # find corresponding canopy cover file:
                         for canopy_file in canopy_list:
-                            canopy_cover_extents = read_raster_and_extent(canopy_file)[
-                                3
-                            ]
+                            # too deep into loops here
+                            (
+                                canopy_cover,
+                                canopy_cover_affine,
+                                canopy_cover_crs,
+                                canopy_cover_extents,
+                            ) = read_raster_and_extent(canopy_file)
+                            print("canopy extent : ", canopy_cover_extents)
+                            canopy_resampled = resample_raster(
+                                canopy_cover,
+                                canopy_cover_affine,
+                                canopy_cover_crs,
+                                sim_array.shape,
+                                sim_affine,
+                                sim_crs,
+                            )
 
-                            # match files with 90% area intersection
+                            # match files with 80% area intersection; but how to match on resampled array?
+                            # just extent perhaps???
                             if (
-                                check_intersection(diff_extents, canopy_cover_extents)
+                                check_intersection(sim_extent, canopy_cover_extents)
                                 == True
                             ):
+                                print("intersection found")
+                                # remove no data values, real range between 0 and 100
+                                masked_canopy = ma.masked_where(
+                                    canopy_resampled < 0, canopy_resampled
+                                )
                                 # Get CC stats
                                 canopy_array, mean_cc, stdDev_cc = (
-                                    self.canopy_cover_stats(canopy_file)
+                                    self.canopy_cover_stats(masked_canopy)
                                 )
-                                # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
+                                print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
                                 image_name = (
                                     f"figures/difference/{folder}/CC{clip_match}.png"
                                 )
@@ -426,11 +466,11 @@ class DtmCreation(object):
                             Std_dev_Canopy_cover=stdDev_cc,
                         )
 
-                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
+                        # need to append no data value even if no intersection, but at this point in the loop will have too many iterations
 
                     # Options for different error cases
                     else:
-                        print("Significant errors in data")
+                        print("Significant errors in data, mismatched array shapes")
                         self.append_results(
                             results,
                             Folder=folder,
@@ -442,8 +482,8 @@ class DtmCreation(object):
                             Bias=bias,
                             NoData_count=noData,
                             Data_count=lenData,
-                            Mean_Canopy_cover=-900,
-                            Std_dev_Canopy_cover=-900,
+                            Mean_Canopy_cover=-999,
+                            Std_dev_Canopy_cover=-999,
                         )
                 except ValueError as e:
                     print(f"{sim_tif} ignored due to error: {e}")
@@ -462,7 +502,7 @@ class DtmCreation(object):
             len(results["NoData_count"]),
             len(results["Data_count"]),
         )
-
+        print(results)
         resultsDf = pd.DataFrame(results)
         outCsv = f"data/{folder}/summary_stats_{folder}.csv"
         resultsDf.to_csv(outCsv, index=False)
@@ -491,15 +531,21 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            dtm_creator.createDTM(site)
+            # dtm_creator.createDTM(site)
+            print(f"Comparing DTMs for {site}")
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        dtm_creator.createDTM(study_area)
+        # dtm_creator.createDTM(study_area)
+        print(f"Comparing DTMs for {study_area}")
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
+
+    # re-write als and canopy readinf functions:
+    # create at higher resolution
+    # resample to match sim

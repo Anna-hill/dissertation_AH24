@@ -101,19 +101,18 @@ def resample_raster(
 ):
 
     dst_data = np.empty(dst_shape, dtype=src_data.dtype)
-    masked_data = ma.masked_where(src_data == -9999, src_data)
-    print(masked_data)
+    # masked_data = ma.masked_where(src_data == -9999, src_data)
 
     reproject(
-        source=masked_data,
+        source=src_data,
         destination=dst_data,
         src_transform=src_transform,
         src_crs=src_crs,
         dst_transform=dst_transform,
         dst_crs=dst_crs,
-        resampling=Resampling.bilinear,
-        src_nodata=np.nan,
-        dst_nodata=np.nan,
+        resampling=Resampling.average,
+        src_nodata=-9999,
+        dst_nodata=-999,
     )
     return dst_data
 
@@ -190,13 +189,23 @@ if __name__ == "__main__":
         mean1 = np.mean(canopy_cover)
         std1 = np.std(canopy_cover)
         # print(resampled_canopy_cover)
-        mean_canopy_cover = np.mean(resampled_canopy_cover)
-        std_canopy_cover = np.std(resampled_canopy_cover)
+
+        masked_data2 = ma.masked_where(
+            resampled_canopy_cover < 0, resampled_canopy_cover
+        )
+
+        mean_canopy_cover = np.nanmean(masked_data2)
+        std_canopy_cover = np.nanstd(masked_data2)
 
         print(f"DTM File: {dtm_file}")
         print(f"Canopy Cover File: {canopy_file}")
         print(f"min val: {np.min(resampled_canopy_cover)}")
-        print(f"  Mean Canopy Cover: {mean1}")
-        print(f"  Standard Deviation of Canopy Cover: {std1}")
+        print(f"Mean Canopy Cover: {mean_canopy_cover}")
+        print(f"Standard Deviation of Canopy Cover: {std_canopy_cover}")
 
-        plot_dtms(dtm, canopy_cover, title1="Elevation (m)", title2="Canopy Cover (%)")
+        plot_dtms(
+            dtm,
+            masked_data2,
+            title1="Elevation (m)",
+            title2="Canopy Cover (%)",
+        )
