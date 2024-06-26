@@ -6,6 +6,7 @@ import argparse
 from glob import glob
 import rasterio
 import regex
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -488,14 +489,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            #dtm_creator.createDTM(site)
+            # dtm_creator.createDTM(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        #dtm_creator.createDTM(study_area)
+        # dtm_creator.createDTM(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t

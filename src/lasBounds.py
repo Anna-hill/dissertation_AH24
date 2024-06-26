@@ -14,9 +14,9 @@ def lasMBR(file):
     # Find min max coord values form las file header and append to list
     # index p. 2 gives Z bounds, not included here
     for minXyz in las.header.min[0:2]:
-        MBR.append(round(minXyz, 1))
+        MBR.append(round(minXyz))
     for maxXyz in las.header.max[0:2]:
-        MBR.append(round(maxXyz, 1))
+        MBR.append(round(maxXyz))
     return MBR
 
 

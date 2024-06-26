@@ -1,4 +1,7 @@
+"""Run gediSimulator to simulate full-waveforms from ALS files"""
+
 import time
+import itertools
 import subprocess
 import argparse
 from glob import glob
@@ -39,7 +42,7 @@ def gediCommands():
         "--pcount",
         dest="pCount",
         type=int,
-        default="0",
+        default="100",
         help=("Number of photon in simulated waveform. -1 to add a set of options"),
     )
 
@@ -47,6 +50,7 @@ def gediCommands():
     return cmdargs
 
 
+# Do i need this????
 def filePath(folder):
     """Function to test file paths and glob"""
 
@@ -127,6 +131,35 @@ def metricCommand(input, outRoot, nPhotons, noise):
     print("The exit code was: %d" % gedi_metric.returncode)
 
 
+def metricText(folder):
+    """Run gediMetric to get text file of metrics (slope, canopy cover, als ground)
+
+    Args:
+        folder (str): name of site to investigate
+    """
+
+    filePath = f"data/{folder}/sim_waves"
+    file_list = glob(filePath + "/*.h5")
+    for file in file_list:
+        clipFile = lasBounds.clipNames(file, ".h5")
+        outname = f"data/{folder}/pts_metric/{clipFile}"
+        # Define and run command
+        gedi_metric = subprocess.run(
+            [
+                "gediMetric",
+                "-input",
+                f"{file}",
+                "-readHDFgedi",
+                "-outRoot",
+                f"{outname}",
+                "-ground",
+                "-noRHgauss",
+            ],
+            check=True,
+        )
+        print("The exit code was: %d" % gedi_metric.returncode)
+
+
 def runMetric(folder, noise, photons):
     """Use gediMetric to convert hdf5 outputs of gedirat simulation into .pts files
         Also vary noise and photon count
@@ -149,47 +182,34 @@ def runMetric(folder, noise, photons):
         15,
         104,
         149,
-    ]  # change values to appropriate noise settings
+    ]
     photon_count = [149, 115]
 
     # 4 different options to allow different combinations of variation for gediMetric command
-
     # All noises all photons options
     if noise == -1 and photons == -1:
-        for idx, file in enumerate(file_list):
-            print("files: ", file_list)
+        # itertools to avoid too many nested loops
+        for file, nPhotons, iNoise in enumerate(file_list, photon_count, noise_levels):
             clipFile = lasBounds.clipNames(file, ".h5")
-            for nPhotons in photon_count:
-                for iNoise in noise_levels:
-                    outroot = (
-                        f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{iNoise}"
-                    )
-                    print(
-                        f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {iNoise}"
-                    )
-                    metricCommand(file, outroot, nPhotons, iNoise)
+            print(f"working on {clipFile}, photons: {photons} noise: {iNoise}")
+            outroot = f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{iNoise}"
+            metricCommand(file, outroot, nPhotons, iNoise)
 
     # All noises but only 1 photon value
     elif noise == -1 and photons != -1:
-        for idx, file in enumerate(file_list):
+        for file, iNoise in itertools.product(file_list, noise_levels):
             clipFile = lasBounds.clipNames(file, ".h5")
-            for iNoise in noise_levels:
-                outroot = f"data/{folder}/pts_metric/{clipFile}_p{photons}_n{iNoise}"
-                print(
-                    f"working on {folder} {idx + 1} of {len(file_list)}, photons: {photons} noise: {iNoise}"
-                )
-                metricCommand(file, outroot, photons, iNoise)
+            outroot = f"data/{folder}/pts_metric/{clipFile}_p{photons}_n{iNoise}"
+            print(f"working on {clipFile}, photons: {photons} noise: {iNoise}")
+            metricCommand(file, outroot, photons, iNoise)
 
     # Only 1 noise level but all photon options
     elif noise != -1 and photons == -1:
-        for idx, file in enumerate(file_list):
+        for file, nPhotons in itertools.product(file_list, photon_count):
             clipFile = lasBounds.clipNames(file, ".h5")
-            for nPhotons in photon_count:
-                outroot = f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{noise}"
-                print(
-                    f"working on {folder} {idx + 1} of {len(file_list)}, photons: {nPhotons} noise: {noise}"
-                )
-                metricCommand(file, outroot, nPhotons, noise)
+            outroot = f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{noise}"
+            print(f"working on {clipFile}, photons: {nPhotons} noise: {noise}")
+            metricCommand(file, outroot, nPhotons, noise)
 
     # 1 noise level and 1 photon count
     else:
@@ -225,6 +245,7 @@ if __name__ == "__main__":
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
             runGRat(site)
+            metricText(site)
             runMetric(site, set_noise, set_pCount)
 
     # Only process given site
@@ -232,17 +253,8 @@ if __name__ == "__main__":
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         runGRat(study_area)
+        metricText(study_area)
         runMetric(study_area, set_noise, set_pCount)
-
-    # in python window in terminal:
-    # sanity check of hdf5 files (better way later)
-    #    >>> import h5py
-    #    >>> filename = "data/Bonaly/sim_waves/Sim_321000.0666000.0.h5"
-    #    >>> f = h5py.File(filename, "r")
-    #    >>> list(f)
-    #    >>> list(f["LAT0"])
-
-    # then we need a lastools shell
 
     # Test efficiency
     t = time.perf_counter() - t

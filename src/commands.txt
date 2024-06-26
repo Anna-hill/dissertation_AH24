@@ -138,3 +138,10 @@ gediMetric -input data/Bonaly/sim_waves/Sim_320000.0665000.0.h5 -readHDFgedi -ou
 
 
 gediMetric -input data/Bonaly/sim_waves/Sim_320000.0665000.0.h5 -readHDFgedi -outRoot data/Bonaly/sim_waves/metric_output/noiseMult2 -photonCount -nPhotons 100 -ground -varScale 3.5 -sWidth 0.8 -noiseMult 2
+
+
+#############################
+26/06/24
+testing gm for canopy cover and als ground
+
+gediMetric -input data/test/sim_waves/826000.0_1149352.8.h5 -readHDFgedi -outRoot data/test/pts_metric/826000_1149352 -ground -noRHgauss
