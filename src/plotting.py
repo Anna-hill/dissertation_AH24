@@ -4,10 +4,12 @@
 
 import time
 import numpy as np
-import rasterio
+
+# import rasterio
 from matplotlib import pyplot as plt
-import matplotlib.colors as colors
-import cartopy.crs as ccrs
+
+# import matplotlib.colors as colors
+# import cartopy.crs as ccrs
 from canopyCover import read_raster_and_extent
 from lasBounds import removeStrings, findEPSG
 
@@ -54,20 +56,19 @@ def one_plot(data, outname):
         data (array): Data to plot
         outname (str): Output file name
     """
-    fdata = np.ma.masked_less(data, -998)
 
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     fig1 = ax1.imshow(
-        fdata,
+        data,
         origin="lower",
-        cmap="Blues",
+        cmap="Spectral",
     )
-    fig.colorbar(fig1, ax=ax1, label="Elevation (m)")
+    fig.colorbar(fig1, ax=ax1, label="Efficiency")
 
     plt.savefig(f"{outname}.png")
-    plt.clf()
     print(f"Figure saved to {outname}.png")
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -85,12 +86,12 @@ if __name__ == "__main__":
     file2 = "data/test/als_canopy/000073_las_dns.tif"
     folder = "test"
 
-    outname = f"{folder}/plotting1"
+    outname = f"figures/difference/plotting1"
 
     masked_data1, affine1, crs1, extent1 = read_raster_and_extent(file1)
     masked_data2, affine2, crs2, extent2 = read_raster_and_extent(file2)
-    epsg = findEPSG(folder)
-    two_plots(masked_data1, masked_data2, outname)
+    # epsg = findEPSG(folder)
+    two_plots(masked_data1, masked_data2, outname, "beans")
 
     # Test efficiency
     t = time.perf_counter() - t

@@ -6,14 +6,18 @@ import argparse
 from glob import glob
 import rasterio
 import regex
+import xarray as xr
+import rioxarray as rxr
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
-from canopyCover import findCC, read_raster_and_extent, check_intersection
+from shapely.geometry import box
+from canopyCover import findCC, read_raster_and_extent
 from plotting import two_plots
+from xrCanopy import compare_and_xarray
 
 
 def gediCommands():
@@ -52,13 +56,6 @@ class DtmCreation(object):
     def __init__(self):
         """Empty for now"""
         pass
-
-    """def interpretName(self, filename):
-        rNPhotons = r"[p]+\d+"
-        rNoise = r"[n]+\d+"
-        noise_list = regex.findall(pattern=rNoise, string=filename)
-        nPhotons_list = regex.findall(pattern=rNPhotons, string=filename)
-        print(noise_list, nPhotons_list)"""
 
     @staticmethod
     # Static methods not dependant on class itself, attributes
@@ -123,6 +120,45 @@ class DtmCreation(object):
             self.runMapLidar(sim_file, 30, epsg, outname)
 
     @staticmethod
+    def read_tiff(file_path, epsg):
+        # Open tif file as an xarray DataArray
+        array = rxr.open_rasterio(file_path)
+        array.rio.write_crs(f"EPSG:{epsg}")
+        return array
+
+    @staticmethod
+    def append_results(results, **kwargs):
+        for key, value in kwargs.items():
+            results[key].append(value)
+
+    @staticmethod
+    def check_intersection(ds1, ds2, lat_dim="y", lon_dim="x"):
+        # Extract bounds for dataset 1
+        lat_min_1, lat_max_1 = ds1[lat_dim].min().item(), ds1[lat_dim].max().item()
+        lon_min_1, lon_max_1 = ds1[lon_dim].min().item(), ds1[lon_dim].max().item()
+
+        # Extract bounds for dataset 2
+        lat_min_2, lat_max_2 = ds2[lat_dim].min().item(), ds2[lat_dim].max().item()
+        lon_min_2, lon_max_2 = ds2[lon_dim].min().item(), ds2[lon_dim].max().item()
+
+        # Create Shapely polygons (bounding boxes)
+        polygon1 = box(lon_min_1, lat_min_1, lon_max_1, lat_max_1)
+        polygon2 = box(lon_min_2, lat_min_2, lon_max_2, lat_max_2)
+
+        # Calculate the intersection
+        intersection = polygon1.intersection(polygon2)
+
+        # Calculate the areas
+        area_ds1 = polygon1.area
+        area_ds2 = polygon2.area
+        overlap_area = intersection.area
+
+        # Check if the overlap covers at least 90% of one of the datasets' area
+        if overlap_area >= 0.9 * area_ds1 or overlap_area >= 0.9 * area_ds2:
+            return True
+
+    # match files
+    @staticmethod
     def match_files(folder1_files, folder2_files):
         # Dictionary to store matched files
         matches = {}
@@ -154,129 +190,27 @@ class DtmCreation(object):
 
         return matches
 
+    # calc metrics
+
+    # create dtm of difference
+
+    # stats of canopy cover
     @staticmethod
-    def rasterio_write(data, outname, template_raster, nodata):
-        """Create output geotiff from array and pre-exisiting geotiff with rasterio
-
-        Args:
-            data (ndarray): data to convert into geotiff
-            outname (str): output file name
-            template_raster (geotiff): existing geotiff to replicate metadata
-            nodata (int): no data value
-        """
-
-        with rasterio.open(
-            outname,
-            "w",
-            driver="GTiff",
-            height=template_raster.height,
-            width=template_raster.width,
-            count=1,
-            dtype=data.dtype,
-            crs=template_raster.crs,
-            transform=template_raster.transform,
-        ) as raster:
-            raster.write(data, 1)
-            raster.nodata = nodata
-        print(f"Tiff written to {outname}")
-
-    @staticmethod
-    def calc_metrics(array1, array2):
-        """Assess differences betwen 2 DEMs
-
-        Args:
-            array1 (array): 1st array
-            array2 (array): 2nd array
-
-        Returns:
-            rmse, r2, bias, no data count: metrics
-        """
-
-        # stats expect 1d array so flatten inputs
-        flat_arr1 = array1.flatten()
-        flat_arr2 = array2.flatten()
-
-        # make mask of data points
-        data_mask = flat_arr2 != 0
-
-        # filter out no data values
-        valid_arr1 = flat_arr1[data_mask]
-        valid_arr2 = flat_arr2[data_mask]
-
-        # count no data pixels
-        no_data_count = np.sum(~data_mask)
-
-        # Find proportion of pixels which have no data
-        data_count = len(flat_arr1)
-
-        if len(valid_arr1) == 0 or len(valid_arr2) == 0:
-            raise ValueError("No data points found")
-
-        # find rmse
-        rmse = np.sqrt(mean_squared_error(valid_arr1, valid_arr2))
-
-        # find r2
-        r2 = r2_score(valid_arr1, valid_arr2)
-
-        # calculate bias
-        bias = np.mean(valid_arr1 - valid_arr2)
-
-        return rmse, r2, bias, no_data_count, data_count
-
-    @staticmethod
-    def diff_dtm(arr1, arr2, no_data_value):
-        """Create tif of difference between 2 DEMs
-
-        Args:
-            arr1 (array): 1st array
-            arr2 (array): 2nd array
-            no_data_value (int): value of no data pixels
-
-        Returns:
-            _type_: _description_
-        """
-
-        # Check arrays have same shape
-        assert arr1.shape == arr2.shape
-        # create valid data mask; so comparsion excludes nodata points
-        valid_mask = (arr1 != no_data_value) & (arr2 != no_data_value)
-        # set up empty array to fill with results
-        result = np.full(arr1.shape, no_data_value, dtype=arr1.dtype)
-        # Find difference
-        result[valid_mask] = arr1[valid_mask] - arr2[valid_mask]
-
-        return result
-
-    @staticmethod
-    def plot_image(raster, outname, folder, label, cmap):
-        # save to plotting
-        """Make a figure from the difference DTM
-
-        Args:
-            raster (arr): data to plot
-            outname (str): output image name
-        """
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        # Check whether lower origin is appropriate
-        # also add georeferencing
-        fig1 = ax1.imshow(raster, origin="lower", cmap=cmap)
-        fig.colorbar(fig1, ax=ax1, label=label)
-        plt.savefig(f"figures/difference/{folder}/{outname}.png")
-        plt.clf()
-
-    @staticmethod
-    def canopy_cover_stats(file_path):
+    def canopy_cover_stats(ds, dim=["x", "y"]):
         # file path defined in containing method (compare)
-        raster_data, _, _, _ = read_raster_and_extent(file_path)
-        mean_cc = np.mean(raster_data)
-        std_cc = np.std(raster_data)
-        return raster_data, mean_cc, std_cc
+        # raster_data, _, _, _ = read_raster_and_extent(file_path)
+        """mask = file > 0
+        masked1 = file.where(mask)
+        mean_cc = np.nanmean(masked1[0].values)
+        std_cc = np.nanstd(masked1[0].values)"""
+        masked_ds = ds.where(ds >= 0)
 
-    @staticmethod
-    def append_results(results, **kwargs):
-        for key, value in kwargs.items():
-            results[key].append(value)
+        # Calculate mean and standard deviation
+        mean_cc = masked_ds.mean(dim=dim).item()
+        std_cc = masked_ds.std(dim=dim).item()
+        return mean_cc, std_cc
+
+    # append results to dataframe function
 
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
@@ -294,8 +228,10 @@ class DtmCreation(object):
         canopy_list = glob(canopy_path + "/*.tif")
 
         # Pair up ALS and sim files so they can be compared
-        # regex quicker than opening all files?
         matched_files = self.match_files(als_list, sim_list)
+
+        # crs of file
+        epsg = lasBounds.findEPSG(folder)
 
         # Define regex patterns to extract info from file names
         rNPhotons = r"[p]+\d+"
@@ -315,37 +251,27 @@ class DtmCreation(object):
             "NoData_count": [],
             "Data_count": [],
         }
-
         # Multiple sim files for each als
         for als_tif, matched_sim in matched_files.items():
-
             for sim_tif in matched_sim:
-                als_open = rasterio.open(als_tif)
-                sim_open = rasterio.open(sim_tif)
+                als_array = self.read_tiff(als_tif, epsg)
+                sim_array = self.read_tiff(sim_tif, epsg)
 
                 # Save shortened file name to name things with later
                 clip_match = lasBounds.clipNames(sim_tif, ".tif")
 
                 # Save file name for results
-                # file_name_saved.append(clip_match)
                 file_name_saved = clip_match
-
                 # extract noise and photon count vals
                 nPhotons = regex.findall(pattern=rNPhotons, string=sim_tif)[0]
                 noise = regex.findall(pattern=rNoise, string=sim_tif)[0]
                 nPhotons = lasBounds.removeStrings(nPhotons)
                 noise = lasBounds.removeStrings(noise)
 
-                als_read = als_open.read(1)
-                sim_read = sim_open.read(1)
-
-                print(als_read.shape, sim_read.shape)
-
                 try:
-                    # If array shape is wrong add flags
-                    if als_read.shape == sim_read.shape:
-                        rmse, rSquared, bias, noData, lenData = self.calc_metrics(
-                            als_read, sim_read
+                    if als_array.shape == sim_array.shape:
+                        ds_diff, rmse, rSquared, bias, noData, lenData = (
+                            compare_and_xarray(als_array, sim_array)
                         )
                     else:
                         print("Mismatched array shapes")
@@ -374,56 +300,23 @@ class DtmCreation(object):
                             NoData_count=noData,
                             Data_count=lenData,
                         )
-                        # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
-
-                        # Save and plot tiff of difference with 0 values hidden
-                        difference = self.diff_dtm(als_read, sim_read, 0)
-                        masked_diference = ma.masked_where(difference == 0, difference)
-                        # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
-                        diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
-                        self.rasterio_write(
-                            data=difference,
-                            outname=diff_outname,
-                            template_raster=sim_open,
-                            nodata=0,
-                        )
-                        # find bounds
-                        diff_extents = read_raster_and_extent(diff_outname)[3]
-
-                        # find corresponding canopy cover file:
+                        print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
                         for canopy_file in canopy_list:
-                            canopy_cover_extents = read_raster_and_extent(canopy_file)[
-                                3
-                            ]
+                            canopy_array = self.read_tiff(canopy_file, epsg)
 
                             # match files with 90% area intersection
-                            if (
-                                check_intersection(diff_extents, canopy_cover_extents)
-                                == True
-                            ):
+                            if self.check_intersection(ds_diff, canopy_array) == True:
                                 # Get CC stats
-                                canopy_array, mean_cc, stdDev_cc = (
-                                    self.canopy_cover_stats(canopy_file)
+                                mean_cc, stdDev_cc = self.canopy_cover_stats(
+                                    canopy_array
                                 )
-                                # print("mean CC: ", mean_cc, ", stdev CC: ", stdDev_cc)
-                                image_name = (
-                                    f"figures/difference/{folder}/CC{clip_match}.png"
-                                )
-                                two_plots(
-                                    masked_diference,
-                                    canopy_array,
-                                    image_name,
-                                    clip_match,
-                                )
+                                print(mean_cc, stdDev_cc)
                                 break
-
                         self.append_results(
                             results,
                             Mean_Canopy_cover=mean_cc,
                             Std_dev_Canopy_cover=stdDev_cc,
                         )
-
-                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
 
                     # Options for different error cases
                     else:
@@ -442,6 +335,7 @@ class DtmCreation(object):
                             Mean_Canopy_cover=-900,
                             Std_dev_Canopy_cover=-900,
                         )
+
                 except ValueError as e:
                     print(f"{sim_tif} ignored due to error: {e}")
                     continue
@@ -459,9 +353,10 @@ class DtmCreation(object):
             len(results["NoData_count"]),
             len(results["Data_count"]),
         )
+        # print(results)
 
         resultsDf = pd.DataFrame(results)
-        outCsv = f"data/{folder}/summary_stats_{folder}.csv"
+        outCsv = f"data/{folder}/summary_stats_{folder}new.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 
@@ -488,14 +383,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            #dtm_creator.createDTM(site)
+            # dtm_creator.createDTM(site)
             dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        #dtm_creator.createDTM(study_area)
+        # dtm_creator.createDTM(study_area)
         dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t
