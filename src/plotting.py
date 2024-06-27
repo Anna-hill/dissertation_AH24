@@ -49,7 +49,7 @@ def two_plots(data, data2, outname, title):
     plt.close()
 
 
-def one_plot(data, outname):
+def one_plot(data, outname, cmap, caption):
     """Make a map from a single dataset
 
     Args:
@@ -62,9 +62,9 @@ def one_plot(data, outname):
     fig1 = ax1.imshow(
         data,
         origin="upper",
-        cmap="Spectral",
+        cmap=cmap,
     )
-    fig.colorbar(fig1, ax=ax1, label="Efficiency")
+    fig.colorbar(fig1, ax=ax1, label=caption)
 
     plt.savefig(f"{outname}.png")
     print(f"Figure saved to {outname}.png")

@@ -15,6 +15,12 @@ from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
 from canopyCover import findCC, read_raster_and_extent, check_intersection
 from plotting import two_plots
+from interpretMetric import (
+    read_text_file,
+    create_geo_raster,
+    create_tiff,
+    metric_functions,
+)
 
 
 def gediCommands():
@@ -53,13 +59,6 @@ class DtmCreation(object):
     def __init__(self):
         """Empty for now"""
         pass
-
-    """def interpretName(self, filename):
-        rNPhotons = r"[p]+\d+"
-        rNoise = r"[n]+\d+"
-        noise_list = regex.findall(pattern=rNoise, string=filename)
-        nPhotons_list = regex.findall(pattern=rNPhotons, string=filename)
-        print(noise_list, nPhotons_list)"""
 
     @staticmethod
     # Static methods not dependant on class itself, attributes
@@ -122,6 +121,38 @@ class DtmCreation(object):
             epsg = lasBounds.findEPSG(folder)
             outname = f"data/{folder}/sim_dtm/{clip_file}"
             self.runMapLidar(sim_file, 30, epsg, outname)
+
+    def read_metric_text(self, folder):
+        metric_path = f"data/{folder}/pts_metric"
+        metric_list = glob(metric_path + "/*.txt")
+        for metric_file in metric_list:
+            clip_metric = lasBounds.clipNames(metric_file, ".txt")
+            outname = f"data/{folder}/als_metric/{clip_metric}"
+            coordinates, ground_values, canopy_values, slope_values = read_text_file(
+                metric_file
+            )
+            als_ground = metric_functions(
+                coordinates,
+                ground_values,
+                cmap="Spectral",
+                caption="Elevation (m)",
+                outname=f"{outname}_ground",
+            )
+            als_canopy = metric_functions(
+                coordinates,
+                canopy_values,
+                cmap="Greens",
+                caption="Canopy cover (%)",
+                outname=f"{outname}_canopy",
+            )
+            als_slope = metric_functions(
+                coordinates,
+                slope_values,
+                cmap="Blues",
+                caption="Slope (%) or angle",
+                outname=f"{outname}_slope",
+            )
+        return als_ground, als_canopy, als_slope
 
     @staticmethod
     def match_files(folder1_files, folder2_files):
@@ -490,14 +521,16 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             # dtm_creator.createDTM(site)
-            dtm_creator.compareDTM(site)
+            dtm_creator.read_metric_text(site)
+            # dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         # dtm_creator.createDTM(study_area)
-        dtm_creator.compareDTM(study_area)
+        dtm_creator.read_metric_text(study_area)
+        # dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
