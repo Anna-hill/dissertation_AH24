@@ -1,35 +1,29 @@
 import pandas as pd
 import numpy as np
+
+# group imports
 import numpy.ma as ma
 import rasterio
 from rasterio.transform import from_origin
 import re
-import matplotlib.pyplot as plt
 from plotting import one_plot
 
 
 # Function to read the text file and extract data
 def read_text_file(file_path):
     coordinates = []
-    # xlist = []
-    # ylist = []
     ground_values = []
 
     with open(file_path, "r") as file:
         lines = file.readlines()
-
         # Process lines one at a time
         for i in range(0, len(lines)):
             id_line = lines[i].strip()
-            # ground_value_line = lines[i + 1].strip()
-            # print(ground_value_line)
 
             # Extract coordinates from the ID line
             match = re.search(r"gediWave\.(\d+)\.(\d+)", id_line)
             if match:
                 x, y = map(int, match.groups())
-                # xlist.append(x)
-                # ylist.append(y)
                 coordinates.append([x, y])
 
                 # Extract the ground value
@@ -42,12 +36,8 @@ def read_text_file(file_path):
 # Function to create a TIFF file from the coordinates and ground values
 def create_tiff(coordinates, ground_values, output_path, resolution=30):
     # Convert coordinates and ground values to numpy arrays
-    # x_coord = np.array(x)
-    # y_coord = np.array(y)
     coordinates = np.array(coordinates)
-    # print(x_coord)
     ground_values = np.array(ground_values)
-    # print(ground_values)
 
     # Determine the bounds of the raster
     min_x, min_y = coordinates.min(axis=0)
@@ -67,7 +57,12 @@ def create_tiff(coordinates, ground_values, output_path, resolution=30):
         raster_data[row, col] = value
 
     # Define the transform (affine transformation matrix)
-    transform = from_origin(min_x, max_y, resolution, resolution)
+    # transform = from_origin(min_x, max_y, resolution, resolution)
+
+    # Grid built with coords at top left of each pixel
+    transform = from_origin(
+        min_x + (resolution / 2), max_y - (resolution / 2), resolution, resolution
+    )
 
     # Write the raster data to a TIFF file
     with rasterio.open(
@@ -88,7 +83,6 @@ def create_tiff(coordinates, ground_values, output_path, resolution=30):
 if __name__ == "__main__":
 
     # for file in pts metric that ends in txt
-
     df = pd.read_csv(
         "data/la_selva/pts_metric/823373.6_1155000.0.metric.txt",
         delimiter=" ",
@@ -112,14 +106,8 @@ if __name__ == "__main__":
             cover = row.iloc[4]
             print("ALS", true_height, "cover", cover, "slope", slope)"""
 
+    # mask no data and visualise
     topen = rasterio.open(output_tiff_path)
     tread = topen.read(1)
-    # masked = np.where(tread == -1000000.0)
     masked = ma.masked_where(tread == -1000000.0, tread)
-    # print(tread)tread
     one_plot(masked, output_tiff_path)
-
-    # how to assign beam id back to las files? share coords but whereeee are they.
-
-    # need to make 30m resolution grid from als height
-    # but how to get bounds, crs,,,, coords,,,

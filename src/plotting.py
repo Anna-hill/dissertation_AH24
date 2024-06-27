@@ -41,7 +41,7 @@ def two_plots(data, data2, outname, title):
 
     ax2 = fig.add_subplot(122)
 
-    fig2 = ax2.imshow(data2, origin="lower", cmap="Greens", vmin=0, vmax=100)
+    fig2 = ax2.imshow(data2, origin="upper", cmap="Greens", vmin=0, vmax=100)
     fig.colorbar(
         fig2, ax=ax2, label="Canopy Cover (%)", orientation="horizontal", pad=0.1
     )
@@ -61,7 +61,7 @@ def one_plot(data, outname):
     ax1 = fig.add_subplot(111)
     fig1 = ax1.imshow(
         data,
-        origin="lower",
+        origin="upper",
         cmap="Spectral",
     )
     fig.colorbar(fig1, ax=ax1, label="Efficiency")
