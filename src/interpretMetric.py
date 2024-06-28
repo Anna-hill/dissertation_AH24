@@ -98,16 +98,18 @@ def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
 
 
 def metric_functions(coords, data, cmap, caption, outname, epsg):
+    """come back later to tidy this one up"""
 
     # make als ground tiff
     raster_data, bounds = create_geo_array(coords, data)
-    create_tiff(raster_data, bounds, epsg, outname)
+    # create_tiff(raster_data, bounds, epsg, outname) # removed for efficiency
 
     # mask no data and visualise
     # open = rasterio.open(output_path)
     # read = open.read(1)
+
     masked = ma.masked_where(raster_data == -1000000.0, raster_data)
-    one_plot(masked, outname, cmap, caption)  # could be removed for efficiency
+    # one_plot(masked, outname, cmap, caption)  # removed for efficiency
 
     return masked
 

@@ -59,25 +59,17 @@ def clipNames(name, suffix):
 
 
 def interpretName(file_list):
-    # filePath = f"data/{folder}/sim_las"
-
-    # file_list = glob(filePath + "/*.pts")
-
     rNPhotons = r"[p]+\d+"
     rNoise = r"[n]+\d+"
-    # summaryStats = np.empty((1, 2), dtype=str)
-    # rCoords = r"[\d]+\d+[.]+\d+[_]+[\d]+\d+[.]+\d"
     noise_list = set()
     nPhotons_list = set()
     for file in file_list:
         nPhoton = regex.findall(pattern=rNPhotons, string=file)[0]
         noise = regex.findall(pattern=rNoise, string=file)[0]
-        # nPhoton = removeStrings(nPhoton)
-        # noise = removeStrings(noise)
+
         nPhotons_list.add(nPhoton)
         noise_list.add(noise)
     return noise_list, nPhotons_list
-    # need to strip n, p, then append to dataframe? (headers useful)
 
 
 # if __name__ == "__main__":
