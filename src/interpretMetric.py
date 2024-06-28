@@ -128,7 +128,7 @@ if __name__ == "__main__":
     coords, ground_values, canopy_values, slope_values = read_text_file(file_path)
 
     # make als ground tiff
-    raster_data, bounds = create_geo_raster(coords, ground_values)
+    raster_data, bounds = create_geo_array(coords, ground_values)
     create_tiff(raster_data, bounds, output_als_path)
 
     # mask no data and visualise
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     one_plot(masked, output_als_path, cmap="Spectral", caption="Elevation (m)")
 
     # make als canopy tiff
-    canopy_data, bounds = create_geo_raster(coords, canopy_values)
+    canopy_data, bounds = create_geo_array(coords, canopy_values)
     create_tiff(canopy_data, bounds, output_canopy_path)
 
     # mask no data and visualise
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     one_plot(masked, output_canopy_path, cmap="Greens", caption="Canopy cover (%)")
 
     # make slope tiff
-    slope_data, bounds = create_geo_raster(coords, slope_values)
+    slope_data, bounds = create_geo_array(coords, slope_values)
     create_tiff(slope_data, bounds, output_slope_path)
 
     # mask no data and visualise
