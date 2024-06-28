@@ -43,7 +43,7 @@ def read_text_file(file_path):
     return coordinates, ground_values, canopy_values, slope_values
 
 
-def create_geo_raster(coordinates, ground_values, resolution=30):
+def create_geo_array(coordinates, ground_values, resolution=30):
     # Convert coordinates and ground values to numpy arrays
     coordinates = np.array(coordinates)
     ground_values = np.array(ground_values)
@@ -71,7 +71,7 @@ def create_geo_raster(coordinates, ground_values, resolution=30):
     return raster_data, bounds
 
 
-def create_tiff(raster_data, bounds, output_path, resolution=30):
+def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
 
     # Grid built with coords at top left of each pixel
     transform = from_origin(
@@ -90,24 +90,24 @@ def create_tiff(raster_data, bounds, output_path, resolution=30):
         width=raster_data.shape[1],
         count=1,
         dtype=raster_data.dtype,
-        crs="EPSG: 32616",
+        crs=f"EPSG: {epsg}",
         transform=transform,
         nodata=np.nan,
     ) as dst:
         dst.write(raster_data, 1)
 
 
-def metric_functions(coords, data, cmap, caption, outname):
+def metric_functions(coords, data, cmap, caption, outname, epsg):
 
     # make als ground tiff
-    raster_data, bounds = create_geo_raster(coords, data)
-    create_tiff(raster_data, bounds, outname)
+    raster_data, bounds = create_geo_array(coords, data)
+    create_tiff(raster_data, bounds, epsg, outname)
 
     # mask no data and visualise
     # open = rasterio.open(output_path)
     # read = open.read(1)
     masked = ma.masked_where(raster_data == -1000000.0, raster_data)
-    one_plot(masked, outname, cmap, caption)
+    one_plot(masked, outname, cmap, caption)  # could be removed for efficiency
 
     return masked
 

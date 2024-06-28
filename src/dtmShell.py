@@ -9,18 +9,15 @@ import regex
 import itertools
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
-from canopyCover import findCC, read_raster_and_extent, check_intersection
+
+# from canopyCover import findCC, read_raster_and_extent, check_intersection
 from plotting import two_plots
-from interpretMetric import (
-    read_text_file,
-    create_geo_raster,
-    create_tiff,
-    metric_functions,
-)
+from interpretMetric import read_text_file, metric_functions
 
 
 def gediCommands():
@@ -96,11 +93,11 @@ class DtmCreation(object):
         Args:
             folder str): study site name for folder path
         """
-        alsPath = f"data/{folder}/raw_las"
+        # alsPath = f"data/{folder}/raw_las"
         simPath = f"data/{folder}/sim_ground"
 
         # Create ALS dtm
-        als_list = glob(alsPath + "/*.las")
+        """als_list = glob(alsPath + "/*.las")
         for idx, als_file in enumerate(als_list):
             bounds = lasBounds.lasMBR(als_file)
             print(
@@ -108,87 +105,91 @@ class DtmCreation(object):
             )
             epsg = lasBounds.findEPSG(folder)
             outname = f"data/{folder}/als_dtm/{bounds[0]}_{bounds[1]}"
-            self.runMapLidar(als_file, 30, epsg, outname)
+            self.runMapLidar(als_file, 30, epsg, outname)"""
 
         # Create simulated data DTM
         sim_list = glob(simPath + "/*.las")
         for idx, sim_file in enumerate(sim_list):
             clip_file = lasBounds.clipNames(sim_file, ".las")
+            bounds = lasBounds.lasMBR(sim_file)
             print(
                 f"working on {folder} {idx + 1} of {len(sim_list)}, bounds = {bounds}"
             )
-            bounds = lasBounds.lasMBR(sim_file)
             epsg = lasBounds.findEPSG(folder)
             outname = f"data/{folder}/sim_dtm/{clip_file}"
             self.runMapLidar(sim_file, 30, epsg, outname)
 
-    def read_metric_text(self, folder):
-        metric_path = f"data/{folder}/pts_metric"
-        metric_list = glob(metric_path + "/*.txt")
-        for metric_file in metric_list:
-            clip_metric = lasBounds.clipNames(metric_file, ".txt")
-            outname = f"data/{folder}/als_metric/{clip_metric}"
-            coordinates, ground_values, canopy_values, slope_values = read_text_file(
-                metric_file
-            )
-            als_ground = metric_functions(
-                coordinates,
-                ground_values,
-                cmap="Spectral",
-                caption="Elevation (m)",
-                outname=f"{outname}_ground",
-            )
-            als_canopy = metric_functions(
-                coordinates,
-                canopy_values,
-                cmap="Greens",
-                caption="Canopy cover (%)",
-                outname=f"{outname}_canopy",
-            )
-            als_slope = metric_functions(
-                coordinates,
-                slope_values,
-                cmap="Blues",
-                caption="Slope (%) or angle",
-                outname=f"{outname}_slope",
-            )
+    def read_metric_text(self, metric_file, folder):
+        clip_metric = lasBounds.clipNames(metric_file, ".txt")
+        outname = f"data/{folder}/als_metric/{clip_metric}"
+        epsg = lasBounds.findEPSG(folder)
+        coordinates, ground_values, canopy_values, slope_values = read_text_file(
+            metric_file
+        )
+        als_ground = metric_functions(
+            coordinates,
+            ground_values,
+            cmap="Spectral",
+            caption="Elevation (m)",
+            outname=f"{outname}_ground",
+            epsg=epsg,
+        )
+        # canopy is 0-1
+        als_canopy = metric_functions(
+            coordinates,
+            canopy_values,
+            cmap="Greens",
+            caption="Canopy cover (%)",
+            outname=f"{outname}_canopy",
+            epsg=epsg,
+        )
+        als_slope = metric_functions(
+            coordinates,
+            slope_values,
+            cmap="Blues",
+            caption="Slope (%) or angle",
+            outname=f"{outname}_slope",
+            epsg=epsg,
+        )
+
+        # ALS ground array then directly - from sim
         return als_ground, als_canopy, als_slope
 
     @staticmethod
-    def match_files(folder1_files, folder2_files):
+    def match_files(als_files, sim_files):
         # Dictionary to store matched files
         matches = {}
 
         # Compile a regex pattern to extract the number sequence
-        pattern = regex.compile(r"(\d+\.\d+_\d+\.\d+)")
+        pattern = regex.compile(r"(\d+_\d+)")
 
-        # Create a dictionary for folder1 files with the extracted number sequence as keys
-        folder1_dict = {
+        # Create a dictionary for als files with the extracted number sequence as keys
+        als_dict = {
             pattern.search(file).group(1): file
-            for file in folder1_files
+            for file in als_files
             if pattern.search(file)
         }
 
-        # Create a dictionary for folder2 files with the extracted number sequence as keys
-        folder2_dict = {}
-        for file in folder2_files:
+        # Create a dictionary for sim files with the extracted number sequence as keys
+        sim_dict = {}
+        for file in sim_files:
             match = pattern.search(file)
             if match:
                 key = match.group(1)
-                if key not in folder2_dict:
-                    folder2_dict[key] = []
-                folder2_dict[key].append(file)
+                if key not in sim_dict:
+                    sim_dict[key] = []
+                sim_dict[key].append(file)
 
-        # Iterate over folder1 dictionary and find matches in folder2 dictionary
-        for key, file1 in folder1_dict.items():
-            if key in folder2_dict:
-                matches[file1] = folder2_dict[key]
+        # Iterate over als dictionary and find matches in sim dictionary
+        for key, file1 in als_dict.items():
+            if key in sim_dict:
+                matches[file1] = sim_dict[key]
 
         return matches
 
     @staticmethod
     def rasterio_write(data, outname, template_raster, nodata):
-        """Create output geotiff from array and pre-exisiting geotiff with rasterio
+        """Create output geotiff from array and pre-existing geotiff with rasterio
 
         Args:
             data (ndarray): data to convert into geotiff
@@ -280,35 +281,19 @@ class DtmCreation(object):
         return result
 
     @staticmethod
-    def plot_image(raster, outname, folder, label, cmap):
-        # save to plotting
-        """Make a figure from the difference DTM
+    def canopy_cover_stats(raster_data):
 
-        Args:
-            raster (arr): data to plot
-            outname (str): output image name
-        """
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        # Check whether lower origin is appropriate
-        # also add georeferencing
-        fig1 = ax1.imshow(raster, origin="lower", cmap=cmap)
-        fig.colorbar(fig1, ax=ax1, label=label)
-        plt.savefig(f"figures/difference/{folder}/{outname}.png")
-        plt.clf()
-
-    @staticmethod
-    def canopy_cover_stats(file_path):
-        # file path defined in containing method (compare)
-        raster_data, _, _, _ = read_raster_and_extent(file_path)
+        # summmarise array values
         mean_cc = np.mean(raster_data)
         std_cc = np.std(raster_data)
-        return raster_data, mean_cc, std_cc
+        return mean_cc, std_cc
 
     @staticmethod
     def append_results(results, **kwargs):
         for key, value in kwargs.items():
             results[key].append(value)
+
+    #################################################################################################
 
     def compareDTM(self, folder):
         """Assess accuracy of simulated DTMs
@@ -317,17 +302,15 @@ class DtmCreation(object):
             folder (_type_): _description_
         """
 
-        als_path = f"data/{folder}/als_dtm"
-        sim_path = f"data/{folder}/sim_dtm"
-        canopy_path = f"data/{folder}/als_canopy"
+        als_metric_path = f"data/{folder}/pts_metric"
+        als_metric_list = glob(als_metric_path + "/*.txt")
 
-        als_list = glob(als_path + "/*.tif")
+        sim_path = f"data/{folder}/sim_dtm"
         sim_list = glob(sim_path + "/*.tif")
-        canopy_list = glob(canopy_path + "/*.tif")
 
         # Pair up ALS and sim files so they can be compared
         # regex quicker than opening all files?
-        matched_files = self.match_files(als_list, sim_list)
+        matched_files = self.match_files(als_metric_list, sim_list)
 
         # Define regex patterns to extract info from file names
         rNPhotons = r"[p]+\d+"
@@ -344,15 +327,17 @@ class DtmCreation(object):
             "Bias": [],
             "Mean_Canopy_cover": [],
             "Std_dev_Canopy_cover": [],
+            "Mean_slope": [],
+            "Std_dev_slope": [],
             "NoData_count": [],
             "Data_count": [],
         }
+        # canopy data - comes from metric reading function
 
         # Multiple sim files for each als
-        for als_tif, matched_sim in matched_files.items():
-
+        for als_metric, matched_sim in matched_files.items():
             for sim_tif in matched_sim:
-                als_open = rasterio.open(als_tif)
+                # als_open = rasterio.open(als_tif)
                 sim_open = rasterio.open(sim_tif)
 
                 # Save shortened file name to name things with later
@@ -368,10 +353,13 @@ class DtmCreation(object):
                 nPhotons = lasBounds.removeStrings(nPhotons)
                 noise = lasBounds.removeStrings(noise)
 
-                als_read = als_open.read(1)
+                # als_read = als_open.read(1)
                 sim_read = sim_open.read(1)
+                als_read, als_canopy, als_slope = self.read_metric_text(
+                    als_metric, folder
+                )
 
-                print(als_read.shape, sim_read.shape)
+                # print(als_read.shape, sim_read.shape)
 
                 try:
                     # If array shape is wrong add flags
@@ -379,9 +367,25 @@ class DtmCreation(object):
                         rmse, rSquared, bias, noData, lenData = self.calc_metrics(
                             als_read, sim_read
                         )
+                        mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
+                        mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
                     else:
                         print("Mismatched array shapes")
-                        rmse, rSquared, bias, noData, lenData = (
+                        (
+                            rmse,
+                            rSquared,
+                            bias,
+                            noData,
+                            lenData,
+                            mean_cc,
+                            stdDev_cc,
+                            mean_slope,
+                            stdDev_slope,
+                        ) = (
+                            -999,
+                            -999,
+                            -999,
+                            -999,
                             -999,
                             -999,
                             -999,
@@ -389,9 +393,6 @@ class DtmCreation(object):
                             -999,
                         )
 
-                    # Set default values to ensure df results same len
-                    mean_cc = -999
-                    stdDev_cc = -999
                     # If metric values look reasonable, save results
                     if -1 <= rSquared <= 1:
                         self.append_results(
@@ -403,6 +404,10 @@ class DtmCreation(object):
                             RMSE=rmse,
                             R2=rSquared,
                             Bias=bias,
+                            Mean_Canopy_cover=mean_cc,
+                            Std_dev_Canopy_cover=stdDev_cc,
+                            Mean_slope=mean_slope,
+                            Std_dev_slope=stdDev_slope,
                             NoData_count=noData,
                             Data_count=lenData,
                         )
@@ -419,8 +424,10 @@ class DtmCreation(object):
                             template_raster=sim_open,
                             nodata=0,
                         )
+                        image_name = f"figures/difference/{folder}/CC{clip_match}.png"
+                        two_plots(masked_diference, als_canopy, image_name, clip_match)
                         # find bounds
-                        diff_extents = read_raster_and_extent(diff_outname)[3]
+                        """diff_extents = read_raster_and_extent(diff_outname)[3]
 
                         # find corresponding canopy cover file:
                         for canopy_file in canopy_list:
@@ -455,7 +462,7 @@ class DtmCreation(object):
                             Std_dev_Canopy_cover=stdDev_cc,
                         )
 
-                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations
+                        # need to append no data value even if no interection, but at this point in the loop will have too many iterations"""
 
                     # Options for different error cases
                     else:
@@ -469,10 +476,12 @@ class DtmCreation(object):
                             RMSE=rmse,
                             R2=rSquared,
                             Bias=bias,
+                            Mean_Canopy_cover=mean_cc,
+                            Std_dev_Canopy_cover=stdDev_cc,
+                            Mean_slope=mean_slope,
+                            Std_dev_slope=stdDev_slope,
                             NoData_count=noData,
                             Data_count=lenData,
-                            Mean_Canopy_cover=-900,
-                            Std_dev_Canopy_cover=-900,
                         )
                 except ValueError as e:
                     print(f"{sim_tif} ignored due to error: {e}")
@@ -493,7 +502,7 @@ class DtmCreation(object):
         )
 
         resultsDf = pd.DataFrame(results)
-        outCsv = f"data/{folder}/summary_stats_{folder}.csv"
+        outCsv = f"data/{folder}/summary_stats_{folder}_new.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 
@@ -521,16 +530,16 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
             # dtm_creator.createDTM(site)
-            dtm_creator.read_metric_text(site)
-            # dtm_creator.compareDTM(site)
+            # dtm_creator.read_metric_text(site)
+            dtm_creator.compareDTM(site)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
         # dtm_creator.createDTM(study_area)
-        dtm_creator.read_metric_text(study_area)
-        # dtm_creator.compareDTM(study_area)
+        # dtm_creator.read_metric_text(study_area)
+        dtm_creator.compareDTM(study_area)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
