@@ -27,7 +27,7 @@ def two_plots(data, data2, outname, title):
     ax1 = fig.add_subplot(121)
     fig1 = ax1.imshow(
         data,
-        origin="lower",
+        origin="upper",
         cmap="Spectral",
     )
     plt.title(title, loc="center")

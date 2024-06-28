@@ -46,7 +46,9 @@ def read_text_file(file_path):
 def create_geo_array(coordinates, ground_values, resolution=30):
     # Convert coordinates and ground values to numpy arrays
     coordinates = np.array(coordinates)
-    ground_values = np.array(ground_values)
+    ground_values = np.array(ground_values, dtype="float32")
+
+    ground_values[ground_values == -1000000.00] = -999
 
     # Determine the bounds of the raster
     min_x, min_y = coordinates.min(axis=0)
@@ -60,7 +62,7 @@ def create_geo_array(coordinates, ground_values, resolution=30):
     height = (max_y - min_y) // resolution + 1
 
     # Create an empty array for the raster data
-    raster_data = np.full((height, width), np.nan)
+    raster_data = np.full((height, width), -999, dtype="float32")
 
     # Populate the raster data with ground values
     for (x, y), value in zip(coordinates, ground_values):
@@ -92,7 +94,7 @@ def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
         dtype=raster_data.dtype,
         crs=f"EPSG: {epsg}",
         transform=transform,
-        nodata=np.nan,
+        nodata=-999,
     ) as dst:
         dst.write(raster_data, 1)
 
@@ -102,16 +104,17 @@ def metric_functions(coords, data, cmap, caption, outname, epsg):
 
     # make als ground tiff
     raster_data, bounds = create_geo_array(coords, data)
-    # create_tiff(raster_data, bounds, epsg, outname) # removed for efficiency
+    # create_tiff(raster_data, bounds, epsg, outname)  # removed for efficiency
 
     # mask no data and visualise
     # open = rasterio.open(output_path)
     # read = open.read(1)
 
-    masked = ma.masked_where(raster_data == -1000000.0, raster_data)
+    # masked = ma.masked_where(raster_data == -999, raster_data)
+
     # one_plot(masked, outname, cmap, caption)  # removed for efficiency
 
-    return masked
+    return raster_data
 
 
 if __name__ == "__main__":

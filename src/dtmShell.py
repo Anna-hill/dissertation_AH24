@@ -186,79 +186,62 @@ class DtmCreation(object):
         print(f"Tiff written to {outname}")
 
     @staticmethod
-    def calc_metrics(array1, array2):
+    def calc_metrics(als_array, sim_array):
         """Assess differences betwen 2 DEMs
 
         Args:
-            array1 (array): 1st array
-            array2 (array): 2nd array
+            als_array (array): 1st array
+            sim_array (array): 2nd array
 
         Returns:
             rmse, r2, bias, no data count: metrics
         """
+        # create valid data mask; so comparison excludes nodata points
 
-        # stats expect 1d array so flatten inputs
-        flat_arr1 = array1.flatten()
-        flat_arr2 = array2.flatten()
-
-        # make mask of data points
-        data_mask = flat_arr2 != 0
+        # Is there a better way to mask?
+        valid_mask = (als_array != -999) & (sim_array != 0)
 
         # filter out no data values
-        valid_arr1 = flat_arr1[data_mask]
-        valid_arr2 = flat_arr2[data_mask]
+        valid_als = als_array[valid_mask]
+        valid_sim = sim_array[valid_mask]
+
+        # stats expect 1d array so flatten inputs
+        # do arrays truly need to be flat???
+        flat_als = valid_als.flatten()
+        flat_sim = valid_sim.flatten()
 
         # count no data pixels
-        no_data_count = np.sum(~data_mask)
+        no_data_count = np.sum(~valid_mask)
 
         # Find proportion of pixels which have no data
-        data_count = len(flat_arr1)
+        data_count = len(flat_als)
 
-        if len(valid_arr1) == 0 or len(valid_arr2) == 0:
+        if len(flat_als) == 0 or len(flat_sim) == 0:
             raise ValueError("No data points found")
 
         # find rmse
-        rmse = np.sqrt(mean_squared_error(valid_arr1, valid_arr2))
+        rmse = np.sqrt(mean_squared_error(flat_als, flat_sim))
 
         # find r2
-        r2 = r2_score(valid_arr1, valid_arr2)
+        r2 = r2_score(flat_als, flat_sim)
 
         # calculate bias
-        bias = np.mean(valid_arr1 - valid_arr2)
+        bias = np.mean(flat_als - flat_sim)
 
-        return rmse, r2, bias, no_data_count, data_count
-
-    @staticmethod
-    def diff_dtm(arr1, arr2, no_data_value):
-        """Create tif of difference between 2 DEMs
-
-        Args:
-            arr1 (array): 1st array
-            arr2 (array): 2nd array
-            no_data_value (int): value of no data pixels
-
-        Returns:
-            _type_: _description_
-        """
-
-        # Check arrays have same shape
-        assert arr1.shape == arr2.shape
-        # create valid data mask; so comparsion excludes nodata points
-        valid_mask = (arr1 != no_data_value) & (arr2 != no_data_value)
         # set up empty array to fill with results
-        result = np.full(arr1.shape, no_data_value, dtype=arr1.dtype)
+        result = np.full(als_array.shape, 0, dtype=als_array.dtype)
         # Find difference
-        result[valid_mask] = arr1[valid_mask] - arr2[valid_mask]
-        print(np.min(result))
+        result[valid_mask] = als_array[valid_mask] - sim_array[valid_mask]
 
-        return result
+        return rmse, r2, bias, no_data_count, data_count, result
 
     @staticmethod
     def canopy_cover_stats(raster_data):
 
         # summmarise array values
-        mean_cc = np.nanmean(raster_data)
-        std_cc = np.nanstd(raster_data)
+        raster_data = ma.masked_where(raster_data < 0, raster_data)
+        mean_cc = np.mean(raster_data)
+        std_cc = np.std(raster_data)
         return mean_cc, std_cc
 
     @staticmethod
@@ -332,15 +315,27 @@ class DtmCreation(object):
                     als_metric, folder
                 )
 
-                # print(np.min(als_read))
                 # als_read = ma.masked_where(als_read < -100, als_read)
 
                 try:
                     # If array shape is wrong add flags
                     if als_read.shape == sim_read.shape:
-                        rmse, rSquared, bias, noData, lenData = self.calc_metrics(
-                            als_read, sim_read
+                        rmse, rSquared, bias, noData, lenData, difference = (
+                            self.calc_metrics(als_read, sim_read)
                         )
+                        # Save and plot tiff of difference with 0 values hidden
+                        masked_diference = ma.masked_where(difference == 0, difference)
+
+                        diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+                        self.rasterio_write(
+                            data=difference,
+                            outname=diff_outname,
+                            template_raster=sim_open,
+                            nodata=0,
+                        )
+
+                        image_name = f"figures/difference/{folder}/CC{clip_match}.png"
+                        two_plots(masked_diference, als_canopy, image_name, clip_match)
                         # extract metrics from als arrays
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
@@ -386,20 +381,6 @@ class DtmCreation(object):
                         Data_count=lenData,
                     )
                     # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
-
-                    # Save and plot tiff of difference with 0 values hidden
-                    difference = self.diff_dtm(als_read, sim_read, 0)
-                    masked_diference = ma.masked_where(difference == 0, difference)
-                    # self.plot_image(masked_diference,clip_match,folder,"Elevation difference(m)","Spectral",)
-                    diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
-                    self.rasterio_write(
-                        data=difference,
-                        outname=diff_outname,
-                        template_raster=sim_open,
-                        nodata=0,
-                    )
-                    image_name = f"figures/difference/{folder}/CC{clip_match}.png"
-                    two_plots(masked_diference, als_canopy, image_name, clip_match)
 
                 except ValueError as e:
                     print(f"{sim_tif} ignored due to error: {e}")
