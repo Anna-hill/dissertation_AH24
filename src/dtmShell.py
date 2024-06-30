@@ -401,7 +401,7 @@ class DtmCreation(object):
         )
 
         resultsDf = pd.DataFrame(results)
-        outCsv = f"data/{folder}/summary_stats_{folder}_new.csv"
+        outCsv = f"data/{folder}/summary_stats_{folder}_3006.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 
@@ -418,11 +418,11 @@ if __name__ == "__main__":
     if all_sites < 0:
         study_sites = [
             "Bonaly",
-            "paracou",
-            "oak_ridge",
-            "nouragues",
-            "la_selva",
             "hubbard_brook",
+            "la_selva",
+            "nouragues",
+            "oak_ridge",
+            "paracou",
             "robson_creek",
             "wind_river",
         ]
