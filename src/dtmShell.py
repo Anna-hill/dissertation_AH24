@@ -401,7 +401,7 @@ class DtmCreation(object):
         )
 
         resultsDf = pd.DataFrame(results)
-        outCsv = f"data/{folder}/summary_stats_{folder}_3006.csv"
+        outCsv = f"data/{folder}/summary_stats_{folder}_0107.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 

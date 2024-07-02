@@ -177,19 +177,25 @@ def runMetric(folder, noise, photons):
     noise_levels = [
         0,
         4,
-        5.3,
+        # 5.3,
         8,
         15,
         104,
         149,
+        # 200,
+        # 300,
+        # 400,
+        # 500,
     ]
-    photon_count = [149, 115]
+    photon_count = [149, 300, 500]
 
     # 4 different options to allow different combinations of variation for gediMetric command
     # All noises all photons options
     if noise == -1 and photons == -1:
         # itertools to avoid too many nested loops
-        for file, nPhotons, iNoise in enumerate(file_list, photon_count, noise_levels):
+        for file, nPhotons, iNoise in itertools.product(
+            file_list, photon_count, noise_levels
+        ):
             clipFile = lasBounds.clipNames(file, ".h5")
             print(f"working on {clipFile}, photons: {photons} noise: {iNoise}")
             outroot = f"data/{folder}/pts_metric/{clipFile}_p{nPhotons}_n{iNoise}"
@@ -244,7 +250,7 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            runGRat(site)
+            # runGRat(site)
             metricText(site)
             runMetric(site, set_noise, set_pCount)
 
@@ -252,7 +258,7 @@ if __name__ == "__main__":
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        runGRat(study_area)
+        # runGRat(study_area)
         metricText(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
