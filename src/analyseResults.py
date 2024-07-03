@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from glob import glob
 import pandas as pd
 import seaborn as sns
+from sklearn.linear_model import LinearRegression
 
 
 def analysisCommands():
@@ -65,57 +66,87 @@ def read_csv(folder, date):
     # grouped = data.groupby(['photons', 'noise'])
 
     for (photons, noise), group in df_folder:
-        """data = (
-            group["RMSE"],
-            (group["Mean_Canopy_cover"] * 100),
-        )
-        print(data)
-        fig = plt.figure()
-        ax1 = fig.add_subplot(111)
-        fig1 = ax1.boxplot(
-            data,
-            patch_artist=True,
-            boxprops={"facecolor": "bisque"},
-        )
-        # plt.scatter(group["Mean_Canopy_cover"],group["RMSE"],)
-        plt.title(f"Error for Photons: {photons} and Noise: {noise}")
-        # fig1.xlabel("Canopy cover")
-        # fig1.ylabel("RMSE")
-        plt.show()"""
 
         # Bin values by mean cc (as percentage)
+        bin_size = 2
+        bins = np.arange(0, 101, bin_size)
         group["CC_bin"] = pd.cut(
             (group["Mean_Canopy_cover"] * 100),
-            # Bin size of 5, as not enough data points for 1
-            bins=np.arange(0, 101, 5),
+            bins=bins,
             include_lowest=True,
             right=False,
         )
-        print(group)
+        # Set bin labels as single number as more readable
+        bin_labels = [f"{b+bin_size}" for b in bins[:-1]]
 
-        # Plot the boxplots using seaborn
-        plt.figure(figsize=(15, 8))
-        sns.boxplot(
-            x="CC_bin",
-            y="RMSE",
-            data=group,
-            whis=[0, 100],
-            width=0.6,
-        )
-        plt.xticks(rotation=90)
-        plt.xlabel("Mean Canopy cover (%)")
-        plt.ylabel("RMSE (m)")
-        plt.title(f"RMSE for Photons: {photons} and Noise: {noise}")
-        plt.show()
+        # Find mean values
+        mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
+        # Ignore N, P combos without any 3 < rmse
+        if np.any(mean_rmse <= 3):
+            # Plot the boxplots using seaborn
+            plt.figure(figsize=(15, 8))
+            # Add a horizontal dashed line at rmse=3
+            plt.axhline(y=3, color="grey", linestyle="--", linewidth=1)
+            sns.boxplot(
+                x="CC_bin",
+                y="RMSE",
+                data=group,
+                whis=[0, 100],
+                width=0.6,
+            )
+            # Fit a line of best fit to the mean rmse values (make function???)
+            x = np.arange(len(bin_labels)).reshape(-1, 1)
+            y = mean_rmse
 
-        # plot box plot function
-        # print(df_folder.get_group(["500"]))
-    # df_filtered = df[df["RMSE"] <= 3]
-    # df_filtered = df_filtered[df_filtered["Noise"] < 104]
-    # plt.scatter(df_filtered["Mean_Canopy_cover"], df_filtered["Noise"], color="green")
-    # plt.ylabel("Noise (photons)")
-    # plt.xlabel("Mean canopy cover")
-    # plt.show()
+            # Filter out NaN values
+            mask = ~np.isnan(y)
+            x_filtered = x[mask].reshape(-1, 1)
+            y_filtered = y[mask]
+            model = LinearRegression()
+            model.fit(x_filtered, y_filtered)
+            y_pred = model.predict(x_filtered)
+
+            # Plot the line of best fit
+            plt.plot(
+                x_filtered,
+                y_pred,
+                color="b",
+                label="Mean RMSE (Line of Best Fit)",
+            )
+
+            # Plot a line joining all the mean values of rmse for each bin
+            # very disjointed and hard to understand. revisit when more data points
+            """plt.plot(
+                np.arange(len(bin_labels)),
+                mean_rmse,
+                # marker="o",
+                color="r",
+                label="Mean RMSE",
+            )"""
+
+            # Set x-axis tick labels
+            plt.xticks(ticks=np.arange(len(bin_labels)), labels=bin_labels, rotation=90)
+
+            # Set y-axis range
+            # plt.ylim(0, 50)
+            # set labels and title
+            plt.xlabel("Mean Canopy cover (%)")
+            plt.ylabel("RMSE (m)")
+            plt.title(f"RMSE for Photons: {photons} and Noise: {noise}")
+
+            plt.savefig(f"figures/box_plots/{folder}/box_p{photons}_n{noise}.png")
+            plt.close()
+        else:
+            print(f"RMSE for Photons: {photons} and Noise: {noise} not below 3")
+
+            # plot box plot function
+            # print(df_folder.get_group(["500"]))
+        # df_filtered = df[df["RMSE"] <= 3]
+        # df_filtered = df_filtered[df_filtered["Noise"] < 104]
+        # plt.scatter(df_filtered["Mean_Canopy_cover"], df_filtered["Noise"], color="green")
+        # plt.ylabel("Noise (photons)")
+        # plt.xlabel("Mean canopy cover")
+        # plt.show()
     return df
 
 
