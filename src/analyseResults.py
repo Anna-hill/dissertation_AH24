@@ -1,8 +1,10 @@
 import time
 import argparse
+import numpy as np
 from matplotlib import pyplot as plt
 from glob import glob
 import pandas as pd
+import seaborn as sns
 
 
 def analysisCommands():
@@ -51,21 +53,61 @@ def read_csv(folder, date):
     # csv file iterations are named by date (format DDMM)
     csv_file = filePath(folder, date)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
+
+    # find proportion of data pixels to no_data
+    df["data_prop"] = (df["Data_count"] - df["NoData_count"]) / df["Data_count"]
+
+    # Filter out rows where the proportion of valid pixels is over 50%
+    filtered_df = df[df["data_prop"] >= 0.5]
     # better way to filter?
-    df_folder = df.groupby(["nPhotons", "Noise"])
+    df_folder = filtered_df.groupby(["nPhotons", "Noise"])
 
     # grouped = data.groupby(['photons', 'noise'])
 
     for (photons, noise), group in df_folder:
-        plt.figure()
-        plt.scatter(
-            group["Mean_Canopy_cover"],
+        """data = (
             group["RMSE"],
+            (group["Mean_Canopy_cover"] * 100),
         )
+        print(data)
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        fig1 = ax1.boxplot(
+            data,
+            patch_artist=True,
+            boxprops={"facecolor": "bisque"},
+        )
+        # plt.scatter(group["Mean_Canopy_cover"],group["RMSE"],)
         plt.title(f"Error for Photons: {photons} and Noise: {noise}")
-        plt.xlabel("Canopy cover")
-        plt.ylabel("RMSE")
+        # fig1.xlabel("Canopy cover")
+        # fig1.ylabel("RMSE")
+        plt.show()"""
+
+        # Bin values by mean cc (as percentage)
+        group["CC_bin"] = pd.cut(
+            (group["Mean_Canopy_cover"] * 100),
+            # Bin size of 5, as not enough data points for 1
+            bins=np.arange(0, 101, 5),
+            include_lowest=True,
+            right=False,
+        )
+        print(group)
+
+        # Plot the boxplots using seaborn
+        plt.figure(figsize=(15, 8))
+        sns.boxplot(
+            x="CC_bin",
+            y="RMSE",
+            data=group,
+            whis=[0, 100],
+            width=0.6,
+        )
+        plt.xticks(rotation=90)
+        plt.xlabel("Mean Canopy cover (%)")
+        plt.ylabel("RMSE (m)")
+        plt.title(f"RMSE for Photons: {photons} and Noise: {noise}")
         plt.show()
+
         # plot box plot function
         # print(df_folder.get_group(["500"]))
     # df_filtered = df[df["RMSE"] <= 3]
@@ -134,7 +176,6 @@ def summary_scatter(date):
         plt.figure()
         for site in group["Folder"].unique():
             site_group = group[group["Folder"] == site]
-            # plt.plot(site_group['error'], marker='o', linestyle='-', color=color_map[site], label=site)
             plt.scatter(
                 site_group["Mean_Canopy_cover"],
                 site_group["RMSE"],
@@ -166,8 +207,7 @@ if __name__ == "__main__":
     site = cmdargs.studyArea
     # set csv date as arg? or produce consistant csv names
 
-    summary_scatter(3006)
-    """
+    # summary_scatter(3006)
     if site == "all":
         study_sites = [
             "Bonaly",
@@ -181,12 +221,11 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            # runGRat(site)
             # read_csv2(area)
-            print(read_csv(area, 3006))
+            read_csv(area, "3006")
     else:
         # read_csv2(site)
-        print(read_csv(site, 3006))"""
+        read_csv(site, "3006")
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

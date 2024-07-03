@@ -250,7 +250,7 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({all_sites})")
         for site in study_sites:
-            # runGRat(site)
+            runGRat(site)
             metricText(site)
             runMetric(site, set_noise, set_pCount)
 
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        # runGRat(study_area)
+        runGRat(study_area)
         metricText(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
