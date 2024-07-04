@@ -46,7 +46,7 @@ def filePath(folder, date):
 
     file = f"data/{folder}"
 
-    file_list = glob(file + f"/summary_stats_{folder}_{date}.csv")
+    file_list = glob(file + f"/summary_{folder}_{date}.csv")
     return file_list
 
 
@@ -132,9 +132,13 @@ def read_csv(folder, date):
             # set labels and title
             plt.xlabel("Mean Canopy cover (%)")
             plt.ylabel("RMSE (m)")
-            plt.title(f"RMSE for Photons: {photons} and Noise: {noise}")
+            plt.title(
+                f"RMSE for Photons: {photons} and Noise: {noise} (interpolation={date})"
+            )
 
-            plt.savefig(f"figures/box_plots/{folder}/box_p{photons}_n{noise}.png")
+            plt.savefig(
+                f"figures/box_plots/{folder}/box_p{photons}_n{noise}_{date}.png"
+            )
             plt.close()
         else:
             print(f"RMSE for Photons: {photons} and Noise: {noise} not below 3")
@@ -213,7 +217,7 @@ def summary_scatter(date):
                 color=color_map[site],
                 label=site,
             )
-        plt.title(f"Error for Photons: {photons} and Noise: {noise}")
+        plt.title(f"Error for Photons: {photons} and Noise: {noise} ({date})")
         plt.xlabel("Canopy cover")
         plt.ylabel("RMSE")
         plt.legend(title="Study Area")
@@ -253,10 +257,10 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
             # read_csv2(area)
-            read_csv(area, "3006")
+            read_csv(area, "False")
     else:
         # read_csv2(site)
-        read_csv(site, "3006")
+        read_csv(site, "False")
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

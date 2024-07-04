@@ -10,8 +10,11 @@ import numpy as np
 import pandas as pd
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.impute import KNNImputer
+from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import griddata
 import lasBounds
-from plotting import two_plots
+from plotting import two_plots, two_plots_test
 from interpretMetric import read_text_file, metric_functions
 
 
@@ -249,9 +252,33 @@ class DtmCreation(object):
         for key, value in kwargs.items():
             results[key].append(value)
 
+    def fill_nodata(self, array, interpolation, int_meth):
+
+        if interpolation == True:
+            # include srtm somehow?
+            # Create a mask of valid (non-zero) values
+            mask = array != 0
+
+            # Generate grid of indices
+            x, y = np.indices(array.shape)
+
+            # Interpolate 0 values
+            array_interpolated = griddata(
+                (x[mask], y[mask]),  # Points where data is not 0
+                array[mask],  # Values at these points
+                (x, y),  # Grid where we want to interpolate
+                method=f"{int_meth}",  # Interpolation method ('linear', 'nearest', 'cubic')
+            )
+            # two_plots_test(array, array_interpolated,"interpolationTest")
+            # interpolation adds NaN values so return these to 0
+            array_interpolated = np.nan_to_num(array_interpolated)
+            return array_interpolated
+        else:
+            return array
+
     #################################################################################################
 
-    def compareDTM(self, folder):
+    def compareDTM(self, folder, interpolation, int_meth):
         """Assess accuracy of simulated DTMs
 
         Args:
@@ -310,7 +337,8 @@ class DtmCreation(object):
                 noise = lasBounds.removeStrings(noise)
 
                 # convert matching files to arrays
-                sim_read = sim_open.read(1)
+                sim_interp = sim_open.read(1)
+                sim_read = self.fill_nodata(sim_interp, interpolation, int_meth)
                 als_read, als_canopy, als_slope = self.read_metric_text(
                     als_metric, folder
                 )
@@ -401,7 +429,10 @@ class DtmCreation(object):
         )
 
         resultsDf = pd.DataFrame(results)
-        outCsv = f"data/{folder}/summary_stats_{folder}_0307.csv"
+        if interpolation == True:
+            outCsv = f"data/{folder}/summary_{folder}_{interpolation}_{int_meth}.csv"
+        else:
+            outCsv = f"data/{folder}/summary_{folder}_{interpolation}.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 
@@ -411,6 +442,10 @@ if __name__ == "__main__":
 
     cmdargs = gediCommands()
     all_sites = cmdargs.everyWhere
+    # set these two to cmdargs
+    interpolation = True
+    #'linear', 'nearest', 'cubic'
+    int_meth = "linear"
 
     dtm_creator = DtmCreation()
 
@@ -428,15 +463,15 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            dtm_creator.createDTM(site)
-            dtm_creator.compareDTM(site)
+            # dtm_creator.createDTM(site)
+            dtm_creator.compareDTM(site, interpolation, int_meth)
 
     # Run on specified site
     else:
         study_area = cmdargs.studyArea
         print(f"working on {study_area}")
-        dtm_creator.createDTM(study_area)
-        dtm_creator.compareDTM(study_area)
+        # dtm_creator.createDTM(study_area)
+        dtm_creator.compareDTM(study_area, interpolation, int_meth)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
