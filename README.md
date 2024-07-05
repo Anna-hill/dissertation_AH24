@@ -10,7 +10,7 @@ testShell aims to perform automated processing to simulate waveforms
 
 example command:
 
->> python3 src/testShell.py --everywhere 1 --noise -1 --pcount 149
+>> python3 src/testShell.py --everywhere 1 --noise -1 --pcount -1
 
 python3 src/testShell.py --everywhere 1 --noise -1 --pcount 500
 
@@ -24,7 +24,7 @@ python3 src/testShell.py --studyarea robson_creek --noise -1 --pcount 149
 python3 src/testShell.py --studyarea test --noise -1 --pcount 149
 
 
-python3 src/dtmShell.py --everywhere -1
+python3 src/dtmShell.py --studyarea all
 python3 src/dtmShell.py --studyarea Bonaly
 python3 src/dtmShell.py --studyarea test
 python3 src/dtmShell.py --studyarea hubbard_brook
@@ -37,9 +37,13 @@ run 1: hansen vals
 python3 src/testShell.py --everywhere 1 --noise -1 --pcount 115
 python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
 python3 src/testShell.py --studyarea nouragues --noise -1 --pcount 149
-
+python3 src/testShell.py --studyarea test --noise -1 --pcount -1
 
 # evening of 12/06
 
 python3 src/testShell.py --everywhere 1 --noise -1 --pcount 149
 python3 src/testShell.py --everywhere 1 --noise 149 --pcount 149
+
+##########
+how many shells is tooooo many:
+python3 src/dtmShell.py --studyarea all --lassettings all

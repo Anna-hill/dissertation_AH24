@@ -13,6 +13,8 @@ from matplotlib import pyplot as plt
 from canopyCover import read_raster_and_extent
 from lasBounds import removeStrings, findEPSG
 
+# set font?
+
 
 def two_plots(data, data2, outname, title):
     """Plot 2 datasets on a map as subplots
@@ -47,6 +49,34 @@ def two_plots(data, data2, outname, title):
     )
     fig.savefig(outname)
     plt.close()
+
+
+def two_plots_test(data, data2, title):
+    """Plot 2 datasets on a map as subplots
+
+    Args:
+        data (array): Data set
+        data2 (array): Different data set
+        outname (str): output file name
+    """
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(121)
+    fig1 = ax1.imshow(data, origin="upper", cmap="Spectral", vmin=0, vmax=150)
+    plt.title(title, loc="center")
+    fig.colorbar(
+        fig1,
+        ax=ax1,
+        label="Original",
+        orientation="horizontal",
+        pad=0.1,
+    )
+
+    ax2 = fig.add_subplot(122)
+
+    fig2 = ax2.imshow(data2, origin="upper", cmap="Spectral", vmin=0, vmax=150)
+    fig.colorbar(fig2, ax=ax2, label="Interpolated", orientation="horizontal", pad=0.1)
+    plt.show()
 
 
 def one_plot(data, outname, cmap, caption):

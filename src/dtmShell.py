@@ -10,11 +10,9 @@ import numpy as np
 import pandas as pd
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.impute import KNNImputer
-from scipy.interpolate import RegularGridInterpolator
 from scipy.interpolate import griddata
 import lasBounds
-from plotting import two_plots, two_plots_test
+from plotting import two_plots
 from interpretMetric import read_text_file, metric_functions
 
 
@@ -31,15 +29,29 @@ def gediCommands():
         dest="studyArea",
         type=str,
         default="Bonaly",
-        help=("Study area name"),
+        help=("Study area name, for all sites input 'all'"),
     )
 
     p.add_argument(
-        "--everywhere",
-        dest="everyWhere",
-        type=int,
-        default="0",
-        help=("Whether to run code on all study sites, 0 no, 1 yes"),
+        "--interpolate",
+        dest="interpolate",
+        type=bool,
+        default=False,
+        help=("Whether to interpolate values of nodata points"),
+    )
+    p.add_argument(
+        "--int_method",
+        dest="intpMethod",
+        type=str,
+        default="linear",
+        help=("No-data interpolation method; can be 'linear', 'nearest' or 'cubic'"),
+    )
+    p.add_argument(
+        "--lassettings",
+        dest="lasSettings",
+        type=str,
+        default="400505",
+        help=("Choose input based on lastools settings applied to find gound"),
     )
 
     cmdargs = p.parse_args()
@@ -55,25 +67,28 @@ class DtmCreation(object):
         """Empty for now"""
         pass
 
-    def createDTM(self, folder):
-        """Run maplidar command to create DTMs from ALS and simulated waveforms
+    def createDTM(self, folder, las_settings):
+        """Run maplidar command to create DTMs from simulated waveforms
 
         Args:
-            folder str): study site name for folder path
+            folder (str): study site name for folder path
+            las_settings (str): lasground settings for folder path
         """
-        # alsPath = f"data/{folder}/raw_las"
-        simPath = f"data/{folder}/sim_ground"
+        # Set location of sim files
+        simPath = f"data/{folder}/sim_ground{las_settings}"
+        sim_list = glob(simPath + "/*.las")
 
         # Create simulated data DTM
-        sim_list = glob(simPath + "/*.las")
         for idx, sim_file in enumerate(sim_list):
+            # Keep original file name
             clip_file = lasBounds.clipNames(sim_file, ".las")
-            bounds = lasBounds.lasMBR(sim_file)
-            print(
-                f"working on {folder} {idx + 1} of {len(sim_list)}, bounds = {bounds}"
-            )
+            print(f"working on {folder} {idx + 1} of {len(sim_list)}")
+
+            # find epsg code for study area
             epsg = lasBounds.findEPSG(folder)
-            outname = f"data/{folder}/sim_dtm/{clip_file}"
+            outname = f"data/{folder}/sim_dtm/{las_settings}/{clip_file}_{las_settings}"
+
+            # run mapLidar command
             create_dtm = subprocess.run(
                 [
                     "mapLidar",
@@ -94,12 +109,23 @@ class DtmCreation(object):
             print("The exit code was: %d" % create_dtm.returncode)
 
     def read_metric_text(self, metric_file, folder):
+        """Interpret txt file produced by gediMetric, summarising key values from ALS data (ground, canopy and slope)
+
+        Args:
+            metric_file (str): path to txt file
+            folder (str): study area
+
+        Returns:
+            array: geolocated array of ALS values
+        """
         clip_metric = lasBounds.clipNames(metric_file, ".txt")
         outname = f"data/{folder}/als_metric/{clip_metric}"
         epsg = lasBounds.findEPSG(folder)
+        # Interpret text file
         coordinates, ground_values, canopy_values, slope_values = read_text_file(
             metric_file
         )
+        # Convert text file values into arrays, make plots, and tifs
         als_ground = metric_functions(
             coordinates,
             ground_values,
@@ -108,7 +134,6 @@ class DtmCreation(object):
             outname=f"{outname}_ground",
             epsg=epsg,
         )
-        # canopy is 0-1
         als_canopy = metric_functions(
             coordinates,
             canopy_values,
@@ -208,31 +233,27 @@ class DtmCreation(object):
         valid_als = als_array[valid_mask]
         valid_sim = sim_array[valid_mask]
 
-        # stats expect 1d array so flatten inputs
-        # do arrays truly need to be flat???
+        # Flatten arrays to do stats
         flat_als = valid_als.flatten()
         flat_sim = valid_sim.flatten()
 
         # count no data pixels
         no_data_count = np.sum(~valid_mask)
 
-        # Find proportion of pixels which have no data
+        # count data pixels
         data_count = len(flat_als)
 
         if len(flat_als) == 0 or len(flat_sim) == 0:
             raise ValueError("No data points found")
 
-        # find rmse
+        # find rmse, r2 and bias
         rmse = np.sqrt(mean_squared_error(flat_als, flat_sim))
-
-        # find r2
         r2 = r2_score(flat_als, flat_sim)
-
-        # calculate bias
         bias = np.mean(flat_als - flat_sim)
 
         # set up empty array to fill with results
         result = np.full(als_array.shape, 0, dtype=als_array.dtype)
+
         # Find difference
         result[valid_mask] = als_array[valid_mask] - sim_array[valid_mask]
 
@@ -240,6 +261,14 @@ class DtmCreation(object):
 
     @staticmethod
     def canopy_cover_stats(raster_data):
+        """Calculate mean and standard deviation from arrays (slope and canopy cover)
+
+        Args:
+            raster_data (array): values to be summarised
+
+        Returns:
+            float: mean and std dev of input raster
+        """
 
         # summmarise array values
         raster_data = ma.masked_where(raster_data < 0, raster_data)
@@ -249,50 +278,66 @@ class DtmCreation(object):
 
     @staticmethod
     def append_results(results, **kwargs):
+        """Append values to results dictionary
+
+        Args:
+            results (dict): dictionary for comparison results
+        """
         for key, value in kwargs.items():
             results[key].append(value)
 
     def fill_nodata(self, array, interpolation, int_meth):
+        """Apply interpolation function to fill no-data gaps in sim_dtm
+
+        Args:
+            array (array): Array containing no-data points (0 value)
+            interpolation (bool): Whether to perform interpolation
+            int_meth (str): Interpolation function applied to data
+
+        Returns:
+            _type_: _description_
+        """
 
         if interpolation == True:
-            # include srtm somehow?
-            # Create a mask of valid (non-zero) values
+            # Identify 0 values to be replaced
             mask = array != 0
 
-            # Generate grid of indices
+            # grid of indices to perform interpolation at
             x, y = np.indices(array.shape)
 
-            # Interpolate 0 values
+            # Apply interpolation functions to 0 values
             array_interpolated = griddata(
-                (x[mask], y[mask]),  # Points where data is not 0
-                array[mask],  # Values at these points
-                (x, y),  # Grid where we want to interpolate
-                method=f"{int_meth}",  # Interpolation method ('linear', 'nearest', 'cubic')
+                (x[mask], y[mask]),
+                array[mask],
+                (x, y),
+                method=f"{int_meth}",
+                fill_value=0,  # Values not interpolated/original data set at 0
             )
-            # two_plots_test(array, array_interpolated,"interpolationTest")
-            # interpolation adds NaN values so return these to 0
-            array_interpolated = np.nan_to_num(array_interpolated)
+
             return array_interpolated
+        # If interpolation = False, original array returned
         else:
             return array
 
     #################################################################################################
 
-    def compareDTM(self, folder, interpolation, int_meth):
+    def compareDTM(self, folder, interpolation, int_meth, las_settings):
         """Assess accuracy of simulated DTMs
 
         Args:
-            folder (_type_): _description_
+            folder (str): Study site name
+            interpolation (bool): Whether to interpolate and fill no data points
+            int_meth (str): If interpolating, which method to use
+            las_settings (str): lasground.new setings of input sim_ground files
         """
-
+        # Define file paths
         als_metric_path = f"data/{folder}/pts_metric"
         als_metric_list = glob(als_metric_path + "/*.txt")
 
-        sim_path = f"data/{folder}/sim_dtm"
+        sim_path = f"data/{folder}/sim_dtm/{las_settings}"
         sim_list = glob(sim_path + "/*.tif")
 
-        # Pair up ALS and sim files so they can be compared
-        # regex quicker than opening all files?
+        # Pair up ALS and sim files for comparison
         matched_files = self.match_files(als_metric_list, sim_list)
 
         # Define regex patterns to extract info from file names
@@ -315,19 +360,14 @@ class DtmCreation(object):
             "NoData_count": [],
             "Data_count": [],
         }
-        # canopy data - comes from metric reading function
 
         # Multiple sim files for each als
         for als_metric, matched_sim in matched_files.items():
             for sim_tif in matched_sim:
-                # als_open = rasterio.open(als_tif)
                 sim_open = rasterio.open(sim_tif)
 
-                # Save shortened file name to name things with later
-                clip_match = lasBounds.clipNames(sim_tif, ".tif")
-
                 # Save file name for results
-                # file_name_saved.append(clip_match)
+                clip_match = lasBounds.clipNames(sim_tif, ".tif")
                 file_name_saved = clip_match
 
                 # extract noise and photon count vals
@@ -337,13 +377,13 @@ class DtmCreation(object):
                 noise = lasBounds.removeStrings(noise)
 
                 # convert matching files to arrays
-                sim_interp = sim_open.read(1)
-                sim_read = self.fill_nodata(sim_interp, interpolation, int_meth)
+                simArray = sim_open.read(1)
+
+                # Fill nodata gaps
+                sim_read = self.fill_nodata(simArray, interpolation, int_meth)
                 als_read, als_canopy, als_slope = self.read_metric_text(
                     als_metric, folder
                 )
-
-                # als_read = ma.masked_where(als_read < -100, als_read)
 
                 try:
                     # If array shape is wrong add flags
@@ -354,7 +394,9 @@ class DtmCreation(object):
                         # Save and plot tiff of difference with 0 values hidden
                         masked_diference = ma.masked_where(difference == 0, difference)
 
-                        diff_outname = f"data/{folder}/diff_dtm/{clip_match}.tif"
+                        diff_outname = (
+                            f"data/{folder}/diff_dtm/{las_settings}/{clip_match}.tif"
+                        )
                         self.rasterio_write(
                             data=difference,
                             outname=diff_outname,
@@ -430,9 +472,9 @@ class DtmCreation(object):
 
         resultsDf = pd.DataFrame(results)
         if interpolation == True:
-            outCsv = f"data/{folder}/summary_{folder}_{interpolation}_{int_meth}.csv"
+            outCsv = f"data/{folder}/summary_{folder}_{las_settings}_{int_meth}.csv"
         else:
-            outCsv = f"data/{folder}/summary_{folder}_{interpolation}.csv"
+            outCsv = f"data/{folder}/summary_{folder}_{las_settings}.csv"
         resultsDf.to_csv(outCsv, index=False)
         print("Results written to: ", outCsv)
 
@@ -441,16 +483,15 @@ if __name__ == "__main__":
     t = time.perf_counter()
 
     cmdargs = gediCommands()
-    all_sites = cmdargs.everyWhere
-    # set these two to cmdargs
-    interpolation = True
-    #'linear', 'nearest', 'cubic'
-    int_meth = "linear"
+    study_area = cmdargs.studyArea
+    interpolation = cmdargs.interpolate
+    int_meth = cmdargs.intpMethod
+    las_settings = cmdargs.lasSettings
 
     dtm_creator = DtmCreation()
 
     # Option to run on all sites
-    if all_sites < 0:
+    if study_area == "all":
         study_sites = [
             "Bonaly",
             "hubbard_brook",
@@ -463,15 +504,15 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            # dtm_creator.createDTM(site)
-            dtm_creator.compareDTM(site, interpolation, int_meth)
+            dtm_creator.createDTM(site, las_settings)
+            dtm_creator.compareDTM(site, interpolation, int_meth, las_settings)
 
     # Run on specified site
     else:
-        study_area = cmdargs.studyArea
+
         print(f"working on {study_area}")
-        # dtm_creator.createDTM(study_area)
-        dtm_creator.compareDTM(study_area, interpolation, int_meth)
+        dtm_creator.createDTM(study_area, las_settings)
+        dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

@@ -36,6 +36,13 @@ def analysisCommands():
         default="1",
         help=("Type of plot to produce"),
     )
+    p.add_argument(
+        "--lassettings",
+        dest="lasSettings",
+        type=str,
+        default="400505",
+        help=("Choose input based on lastools settings applied to find gound"),
+    )
 
     cmdargs = p.parse_args()
     return cmdargs
@@ -66,6 +73,10 @@ def read_csv(folder, date):
     # grouped = data.groupby(['photons', 'noise'])
 
     for (photons, noise), group in df_folder:
+        # beam sensitivity?
+        # print(group["RMSE"] > 3.0["Mean_Canopy_cover"].min)
+        bs_01 = group[group["RMSE"] > 3]["Mean_Canopy_cover"].min()
+        print("beam sensitivity", bs_01 * 100)
 
         # Bin values by mean cc (as percentage)
         bin_size = 2
@@ -142,15 +153,6 @@ def read_csv(folder, date):
             plt.close()
         else:
             print(f"RMSE for Photons: {photons} and Noise: {noise} not below 3")
-
-            # plot box plot function
-            # print(df_folder.get_group(["500"]))
-        # df_filtered = df[df["RMSE"] <= 3]
-        # df_filtered = df_filtered[df_filtered["Noise"] < 104]
-        # plt.scatter(df_filtered["Mean_Canopy_cover"], df_filtered["Noise"], color="green")
-        # plt.ylabel("Noise (photons)")
-        # plt.xlabel("Mean canopy cover")
-        # plt.show()
     return df
 
 
@@ -240,6 +242,8 @@ if __name__ == "__main__":
     cmdargs = analysisCommands()
     results_csv = cmdargs.inFile
     site = cmdargs.studyArea
+    las_settings = cmdargs.lasSettings
+
     # set csv date as arg? or produce consistant csv names
 
     # summary_scatter(3006)
@@ -257,35 +261,10 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
             # read_csv2(area)
-            read_csv(area, "False")
+            read_csv(area, las_settings)
     else:
         # read_csv2(site)
-        read_csv(site, "False")
+        read_csv(site, las_settings)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
-
-    """import matplotlib.pyplot as plt
-    import numpy as np
-
-    np.random.seed(19680801)
-    fruit_weights = [
-        np.random.normal(130, 10, size=100),
-        np.random.normal(125, 20, size=100),
-        np.random.normal(120, 30, size=100),
-    ]
-    labels = ['peaches', 'oranges', 'tomatoes']
-    colors = ['peachpuff', 'orange', 'tomato']
-
-    fig, ax = plt.subplots()
-    ax.set_ylabel('fruit weight (g)')
-
-    bplot = ax.boxplot(fruit_weights,
-                    patch_artist=True,  # fill with color
-                    tick_labels=labels)  # will be used to label x-ticks
-
-    # fill with colors
-    for patch, color in zip(bplot['boxes'], colors):
-        patch.set_facecolor(color)
-
-    plt.show()"""
