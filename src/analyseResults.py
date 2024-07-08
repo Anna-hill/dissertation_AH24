@@ -6,6 +6,7 @@ from glob import glob
 import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
+from lasBounds import append_results
 
 
 def analysisCommands():
@@ -48,18 +49,18 @@ def analysisCommands():
     return cmdargs
 
 
-def filePath(folder, date):
+def filePath(folder, las_settings):
     """Function to test file paths and glob"""
 
     file = f"data/{folder}"
 
-    file_list = glob(file + f"/summary_{folder}_{date}.csv")
+    file_list = glob(file + f"/summary_{folder}_{las_settings}.csv")
     return file_list
 
 
-def read_csv(folder, date):
-    # csv file iterations are named by date (format DDMM)
-    csv_file = filePath(folder, date)
+def read_csv(folder, las_settings):
+    # csv file iterations are named by las_settings
+    csv_file = filePath(folder, las_settings)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
 
     # find proportion of data pixels to no_data
@@ -67,19 +68,24 @@ def read_csv(folder, date):
 
     # Filter out rows where the proportion of valid pixels is over 50%
     filtered_df = df[df["data_prop"] >= 0.5]
-    # better way to filter?
     df_folder = filtered_df.groupby(["nPhotons", "Noise"])
 
-    # grouped = data.groupby(['photons', 'noise'])
+    results = {
+        "Folder": [],
+        "nPhotons": [],
+        "Noise": [],
+        "RMSE": [],
+        "Bias": [],
+        "beam_sensitivity": [],
+    }
 
     for (photons, noise), group in df_folder:
+
         # beam sensitivity?
         # print(group["RMSE"] > 3.0["Mean_Canopy_cover"].min)
-        bs_01 = group[group["RMSE"] > 3]["Mean_Canopy_cover"].min()
-        print("beam sensitivity", bs_01 * 100)
 
         # Bin values by mean cc (as percentage)
-        bin_size = 2
+        bin_size = 1
         bins = np.arange(0, 101, bin_size)
         group["CC_bin"] = pd.cut(
             (group["Mean_Canopy_cover"] * 100),
@@ -94,6 +100,20 @@ def read_csv(folder, date):
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
         # Ignore N, P combos without any 3 < rmse
         if np.any(mean_rmse <= 3):
+            beam_sens = group[group["RMSE"] > 3]["Mean_Canopy_cover"].min()
+
+            rmse_mean = np.mean(group["RMSE"])
+            bias_mean = np.mean(group["Bias"])
+
+            append_results(
+                results,
+                Folder=folder,
+                nPhotons=photons,
+                Noise=noise,
+                beam_sensitivity=(beam_sens * 100),
+                RMSE=rmse_mean,
+                Bias=bias_mean,
+            )
             # Plot the boxplots using seaborn
             plt.figure(figsize=(15, 8))
             # Add a horizontal dashed line at rmse=3
@@ -144,15 +164,22 @@ def read_csv(folder, date):
             plt.xlabel("Mean Canopy cover (%)")
             plt.ylabel("RMSE (m)")
             plt.title(
-                f"RMSE for Photons: {photons} and Noise: {noise} (interpolation={date})"
+                f"RMSE for Photons: {photons} and Noise: {noise} (las settings={las_settings})"
             )
 
             plt.savefig(
-                f"figures/box_plots/{folder}/box_p{photons}_n{noise}_{date}.png"
+                f"figures/box_plots/{folder}/box_p{photons}_n{noise}_{las_settings}.png"
             )
             plt.close()
         else:
-            print(f"RMSE for Photons: {photons} and Noise: {noise} not below 3")
+            print(
+                f"RMSE for {folder} Photons: {photons} and Noise: {noise} not below 3"
+            )
+    # save results to new csv
+    resultsDf = pd.DataFrame(results)
+    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}.csv"
+    resultsDf.to_csv(outCsv, index=False)
+    print("Results written to: ", outCsv)
     return df
 
 
@@ -169,7 +196,7 @@ def read_csv2(filename):
     return df
 
 
-def summary_scatter(date):
+def summary_scatter(las_settings):
     """Scatter plots combining all sites"""
     study_sites = [
         "Bonaly",
@@ -183,7 +210,7 @@ def summary_scatter(date):
     ]
     csv_list = []
     for site in study_sites:
-        csv = filePath(site, date)
+        csv = filePath(site, las_settings)
         csv_list.append(csv[0])
     # print(csv_list)
     dfs = [pd.read_csv(file) for file in csv_list]
@@ -219,11 +246,29 @@ def summary_scatter(date):
                 color=color_map[site],
                 label=site,
             )
-        plt.title(f"Error for Photons: {photons} and Noise: {noise} ({date})")
+        plt.title(f"Error for Photons: {photons} and Noise: {noise} ({las_settings})")
         plt.xlabel("Canopy cover")
         plt.ylabel("RMSE")
         plt.legend(title="Study Area")
         plt.show()
+
+
+def concat_csv(las_settings):
+
+    # file path function
+    file_path = f"data/beam_sensitivity/{las_settings}"
+    csv_list = glob(file_path + "/*.csv")
+
+    # for csv in file_list:
+    #  csv_list.append(csv[0])
+    # print(csv_list)
+    dfs = [pd.read_csv(file) for file in csv_list]
+
+    # Concatenate all DataFrames into one
+    df = pd.concat(dfs, ignore_index=True)
+
+    outCsv = f"data/beam_sensitivity/{las_settings}/summary_stats.csv"
+    df.to_csv(outCsv, index=False)
 
 
 # canopy as pc
@@ -244,8 +289,6 @@ if __name__ == "__main__":
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
 
-    # set csv date as arg? or produce consistant csv names
-
     # summary_scatter(3006)
     if site == "all":
         study_sites = [
@@ -262,9 +305,12 @@ if __name__ == "__main__":
         for area in study_sites:
             # read_csv2(area)
             read_csv(area, las_settings)
+
     else:
         # read_csv2(site)
         read_csv(site, las_settings)
 
+    # merge bs results into one file
+    concat_csv(las_settings)
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

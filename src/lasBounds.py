@@ -72,6 +72,16 @@ def interpretName(file_list):
     return noise_list, nPhotons_list
 
 
+def append_results(results, **kwargs):
+    """Append values to results dictionary
+
+    Args:
+        results (dict): dictionary for comparison results
+    """
+    for key, value in kwargs.items():
+        results[key].append(value)
+
+
 # if __name__ == "__main__":
 # lasMBR("data/paracou/raw_las/Paracou2009_284584_580489.las")
 # name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")

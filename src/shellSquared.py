@@ -1,3 +1,5 @@
+"""Script to run dtmShell with differnt las options. Use with caution - takes about 6 hours to run"""
+
 import subprocess
 import time
 import argparse

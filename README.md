@@ -46,4 +46,4 @@ python3 src/testShell.py --everywhere 1 --noise 149 --pcount 149
 
 ##########
 how many shells is tooooo many:
-python3 src/dtmShell.py --studyarea all --lassettings all
+python3 src/shellSquared.py --studyarea all --lassettings all

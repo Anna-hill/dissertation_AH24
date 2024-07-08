@@ -276,16 +276,6 @@ class DtmCreation(object):
         std_cc = np.std(raster_data)
         return mean_cc, std_cc
 
-    @staticmethod
-    def append_results(results, **kwargs):
-        """Append values to results dictionary
-
-        Args:
-            results (dict): dictionary for comparison results
-        """
-        for key, value in kwargs.items():
-            results[key].append(value)
-
     def fill_nodata(self, array, interpolation, int_meth):
         """Apply interpolation function to fill no-data gaps in sim_dtm
 
@@ -434,7 +424,7 @@ class DtmCreation(object):
                         )
 
                     # save results to dictionary
-                    self.append_results(
+                    lasBounds.append_results(
                         results,
                         Folder=folder,
                         File=file_name_saved,
