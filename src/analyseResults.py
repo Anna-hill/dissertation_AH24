@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from lasBounds import append_results
+from plotting import three_D_scatter
 
 
 def analysisCommands():
@@ -267,8 +268,38 @@ def concat_csv(las_settings):
     # Concatenate all DataFrames into one
     df = pd.concat(dfs, ignore_index=True)
 
+    # make 3d plot of photon, noise, bs (folder as colour?)
+    # Most high noise vals removed in prev function
+    # three_D_scatter(df["nPhotons"], df["Noise"], df["beam_sensitivity"], df["Folder"], las_settings)
     outCsv = f"data/beam_sensitivity/{las_settings}/summary_stats.csv"
     df.to_csv(outCsv, index=False)
+
+    # set colour scheme
+    color_map = {
+        site: color
+        for site, color in zip(df["Folder"].unique(), plt.cm.get_cmap("Dark2").colors)
+    }
+
+    fig = plt.figure(figsize=(15, 8))
+    ax = fig.add_subplot(projection="3d")
+
+    for site in df["Folder"].unique():
+        site_group = df[df["Folder"] == site]
+        ax.scatter(
+            site_group["nPhotons"],
+            site_group["Noise"],
+            site_group["beam_sensitivity"],
+            color=color_map[site],
+            label=site,
+        )
+
+    ax.set_xlabel("Photons")
+    ax.set_ylabel("Noise")
+    ax.set_zlabel("Beam Sensitivity")
+    ax.legend(loc="upper left")
+    plt.title(las_settings)
+    plt.savefig(f"figures/scatter_plots/{las_settings}.png")
+    plt.close
 
 
 # canopy as pc

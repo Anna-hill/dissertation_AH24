@@ -97,16 +97,48 @@ def one_plot(data, outname, cmap, caption):
     plt.close()
 
 
+def three_D_scatter(x_var, y_var, z_var, colour, title):
+
+    color_map = {
+        site: color
+        for site, color in zip(colour.unique(), plt.cm.get_cmap("Dark2").colors)
+    }
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+
+    # n = 100
+
+    # For each set of style and range settings, plot n random points in the box
+    # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
+    # for m, zlow, zhigh in [("o", -50, -25), ("^", -30, -5)]:
+    # xs = randrange(n, 23, 32)
+    # ys = randrange(n, 0, 100)
+    # zs = randrange(n, zlow, zhigh)
+    ax.scatter(
+        x_var,
+        y_var,
+        z_var,
+        color=color_map[colour],
+    )
+
+    ax.set_xlabel("X Label")
+    ax.set_ylabel("Y Label")
+    ax.set_zlabel("Z Label")
+    plt.title(title)
+    plt.show()
+
+
 if __name__ == "__main__":
     t = time.perf_counter()
 
     # Load command  line arguments
-    # cmdargs = getCmdArgs()
-    # infile = file_pseudo(cmdargs.inName)  # Use full file path to tiff
+    """cmdargs = getCmdArgs()
+    infile = file_pseudo(cmdargs.inName)  # Use full file path to tiff
 
-    # plotOption = cmdargs.plotType
-    # output_path = out_pseudo(cmdargs.outPath)
-    # outname = f"{output_path}{cmdargs.outName}"
+    plotOption = cmdargs.plotType
+    output_path = out_pseudo(cmdargs.outPath)
+    outname = f"{output_path}{cmdargs.outName}"
 
     file1 = "data/test/als_dtm/826000.0_1149352.8.tif"
     file2 = "data/test/als_canopy/000073_las_dns.tif"
@@ -117,7 +149,9 @@ if __name__ == "__main__":
     masked_data1, affine1, crs1, extent1 = read_raster_and_extent(file1)
     masked_data2, affine2, crs2, extent2 = read_raster_and_extent(file2)
     # epsg = findEPSG(folder)
-    two_plots(masked_data1, masked_data2, outname, "beans")
+    two_plots(masked_data1, masked_data2, outname, "beans")"""
+
+    three_D_scatter()
 
     # Test efficiency
     t = time.perf_counter() - t
