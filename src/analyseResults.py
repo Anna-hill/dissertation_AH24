@@ -2,6 +2,7 @@ import time
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 from glob import glob
 import pandas as pd
 import seaborn as sns
@@ -100,8 +101,8 @@ def read_csv(folder, las_settings):
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
         # Ignore N, P combos without any 3 < rmse
-        if np.any(mean_rmse <= 3):
-            beam_sens = group[group["RMSE"] > 3]["Mean_Canopy_cover"].min()
+        if np.any(mean_rmse <= 5):
+            beam_sens = group[group["RMSE"] > 5]["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
@@ -118,7 +119,7 @@ def read_csv(folder, las_settings):
             # Plot the boxplots using seaborn
             plt.figure(figsize=(15, 8))
             # Add a horizontal dashed line at rmse=3
-            plt.axhline(y=3, color="grey", linestyle="--", linewidth=1)
+            plt.axhline(y=5, color="grey", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
@@ -273,6 +274,10 @@ def concat_csv(las_settings):
     # three_D_scatter(df["nPhotons"], df["Noise"], df["beam_sensitivity"], df["Folder"], las_settings)
     outCsv = f"data/beam_sensitivity/{las_settings}/summary_stats.csv"
     df.to_csv(outCsv, index=False)
+    return df
+
+
+def plot3D(df):
 
     # set colour scheme
     color_map = {
@@ -282,24 +287,47 @@ def concat_csv(las_settings):
 
     fig = plt.figure(figsize=(15, 8))
     ax = fig.add_subplot(projection="3d")
+    X = site_group["nPhotons"]
+    Y = site_group["Noise"]
+    Z = site_group["beam_sensitivity"]
+    # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
 
     for site in df["Folder"].unique():
         site_group = df[df["Folder"] == site]
-        ax.scatter(
-            site_group["nPhotons"],
-            site_group["Noise"],
-            site_group["beam_sensitivity"],
-            color=color_map[site],
-            label=site,
+        ax.plot_wireframe(
+            X, Y, Z, color=color_map[site], label=site, rstride=10, cstride=10
         )
-
     ax.set_xlabel("Photons")
     ax.set_ylabel("Noise")
     ax.set_zlabel("Beam Sensitivity")
     ax.legend(loc="upper left")
-    plt.title(las_settings)
-    plt.savefig(f"figures/scatter_plots/{las_settings}.png")
-    plt.close
+
+    # Rotate the axes and update
+    for angle in range(0, 360 * 4 + 1):
+        # Normalize the angle to the range [-180, 180] for display
+        angle_norm = (angle + 180) % 360 - 180
+
+        # Cycle through a full rotation of elevation, then azimuth, roll, and all
+        elev = azim = roll = 0
+        if angle <= 360:
+            elev = angle_norm
+        elif angle <= 360 * 2:
+            azim = angle_norm
+        elif angle <= 360 * 3:
+            roll = angle_norm
+        else:
+            elev = azim = roll = angle_norm
+
+        # Update the axis view and title
+        ax.view_init(elev, azim, roll)
+        plt.title("Elevation: %d°, Azimuth: %d°, Roll: %d°" % (elev, azim, roll))
+
+        plt.draw()
+        plt.pause(0.001)
+
+    # plt.title(las_settings)
+    # plt.savefig(f"figures/scatter_plots/{las_settings}.png")
+    # plt.close
 
 
 # canopy as pc
@@ -342,6 +370,7 @@ if __name__ == "__main__":
         read_csv(site, las_settings)
 
     # merge bs results into one file
-    concat_csv(las_settings)
+    df = concat_csv(las_settings)
+    plot3D(df)
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

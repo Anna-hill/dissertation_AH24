@@ -122,8 +122,8 @@ class DtmCreation(object):
         outname = f"data/{folder}/als_metric/{clip_metric}"
         epsg = lasBounds.findEPSG(folder)
         # Interpret text file
-        coordinates, ground_values, canopy_values, slope_values = read_text_file(
-            metric_file
+        coordinates, ground_values, canopy_values, slope_values, top_height = (
+            read_text_file(metric_file)
         )
         # Convert text file values into arrays, make plots, and tifs
         als_ground = metric_functions(
@@ -146,13 +146,22 @@ class DtmCreation(object):
             coordinates,
             slope_values,
             cmap="Blues",
+            # check this
             caption="Slope (%) or angle",
             outname=f"{outname}_slope",
             epsg=epsg,
         )
+        als_t_height = metric_functions(
+            coordinates,
+            top_height,
+            cmap="Greens",
+            caption="Top height (m)",
+            outname=f"{outname}_t_height",
+            epsg=epsg,
+        )
 
         # ALS ground array then directly - from sim
-        return als_ground, als_canopy, als_slope
+        return als_ground, als_canopy, als_slope, als_t_height
 
     @staticmethod
     # Static methods not dependant on class itself, attributes
@@ -238,7 +247,7 @@ class DtmCreation(object):
         flat_sim = valid_sim.flatten()
 
         # count no data pixels
-        no_data_count = np.sum(~valid_mask)
+        no_data_count = np.sum(sim_array == 0)
 
         # count data pixels
         data_count = len(flat_als)
@@ -276,7 +285,30 @@ class DtmCreation(object):
         std_cc = np.std(raster_data)
         return mean_cc, std_cc
 
-    def fill_nodata(self, array, interpolation, int_meth):
+    def find_nodata(self, ground_elev, canopy_elev):
+        """Justify heavily! funciton finds suitable no data value for empty pixels where ground not found.
+        In real data, likely that ground mis-identified as point within canopy, therefore value is average middle of canopy as absolute height
+
+
+        Args:
+            ground_elev (_type_): _description_
+            canopy_elev (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        valid_mask = (ground_elev > 0) & (canopy_elev > 0)
+
+        # justify!!!!!!!!!!!!!!!!!!!
+        # find middle point of canopy
+        canopy_height = (canopy_elev[valid_mask] - ground_elev[valid_mask]) / 2
+        ground_mean = np.mean(ground_elev[valid_mask])
+        # mean vs median?????
+        # returns absolute height?
+        no_data_val = np.median(canopy_height) + ground_mean
+        return no_data_val
+
+    def fill_nodata(self, array, interpolation, int_meth, no_data):
         """Apply interpolation function to fill no-data gaps in sim_dtm
 
         Args:
@@ -307,6 +339,8 @@ class DtmCreation(object):
             return array_interpolated
         # If interpolation = False, original array returned
         else:
+            # replace 0 values with appropriate no data for each tile
+            array = np.where(array == 0, no_data, array)
             return array
 
     #################################################################################################
@@ -369,10 +403,15 @@ class DtmCreation(object):
                 # convert matching files to arrays
                 simArray = sim_open.read(1)
 
-                # Fill nodata gaps
-                sim_read = self.fill_nodata(simArray, interpolation, int_meth)
-                als_read, als_canopy, als_slope = self.read_metric_text(
+                # Extract values from als files
+                als_read, als_canopy, als_slope, als_height = self.read_metric_text(
                     als_metric, folder
+                )
+                # find nodata value
+                canopy_middle = self.find_nodata(als_read, als_height)
+                # Fill nodata gaps
+                sim_read = self.fill_nodata(
+                    simArray, interpolation, int_meth, canopy_middle
                 )
 
                 try:

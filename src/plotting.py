@@ -98,6 +98,8 @@ def one_plot(data, outname, cmap, caption):
 
 
 def three_D_scatter(x_var, y_var, z_var, colour, title):
+    # See link below for guidance on making plots rotate - website and github?
+    # https://matplotlib.org/stable/gallery/mplot3d/rotate_axes3d_sgskip.html#sphx-glr-gallery-mplot3d-rotate-axes3d-sgskip-py
 
     color_map = {
         site: color

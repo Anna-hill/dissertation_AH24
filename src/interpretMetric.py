@@ -15,6 +15,7 @@ def read_text_file(file_path):
     ground_values = []
     canopy_values = []
     slope_values = []
+    top_height = []
 
     with open(file_path, "r") as file:
         lines = file.readlines()
@@ -32,6 +33,10 @@ def read_text_file(file_path):
                 ground_value = float(id_line.split()[1])
                 ground_values.append(ground_value)
 
+                # extract canopy top height
+                top_value = float(id_line.split()[2])
+                top_height.append(top_value)
+
                 # extract canopy value
                 canopy_value = float(id_line.split()[4])
                 canopy_values.append(canopy_value)
@@ -40,7 +45,7 @@ def read_text_file(file_path):
                 slope_value = float(id_line.split()[3])
                 slope_values.append(slope_value)
 
-    return coordinates, ground_values, canopy_values, slope_values
+    return coordinates, ground_values, canopy_values, slope_values, top_height
 
 
 def create_geo_array(coordinates, ground_values, resolution=30):
