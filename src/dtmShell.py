@@ -415,7 +415,7 @@ class DtmCreation(object):
                         simArray, interpolation, int_meth, canopy_middle
                     )
                 except ValueError as e:
-                    print(f"{simArray} ignored due to error: {e}")
+                    print(f"{sim_tif} ignored due to error: {e}")
                     continue
 
                 try:
