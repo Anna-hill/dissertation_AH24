@@ -246,9 +246,6 @@ class DtmCreation(object):
         flat_als = valid_als.flatten()
         flat_sim = valid_sim.flatten()
 
-        # count no data pixels
-        no_data_count = np.sum(sim_array == 0)
-
         # count data pixels
         data_count = len(flat_als)
 
@@ -266,7 +263,7 @@ class DtmCreation(object):
         # Find difference
         result[valid_mask] = als_array[valid_mask] - sim_array[valid_mask]
 
-        return rmse, r2, bias, no_data_count, data_count, result
+        return rmse, r2, bias, data_count, result
 
     @staticmethod
     def canopy_cover_stats(raster_data):
@@ -319,6 +316,8 @@ class DtmCreation(object):
         Returns:
             _type_: _description_
         """
+        # count no data pixels
+        no_data_count = np.sum(array == 0)
 
         if interpolation == True:
             # Identify 0 values to be replaced
@@ -336,12 +335,13 @@ class DtmCreation(object):
                 fill_value=0,  # Values not interpolated/original data set at 0
             )
 
-            return array_interpolated
+            return array_interpolated, no_data_count
         # If interpolation = False, original array returned
         else:
+
             # replace 0 values with appropriate no data for each tile
             array = np.where(array == 0, no_data, array)
-            return array
+            return array, no_data_count
 
     #################################################################################################
 
@@ -410,15 +410,26 @@ class DtmCreation(object):
                 # find nodata value
                 canopy_middle = self.find_nodata(als_read, als_height)
                 # Fill nodata gaps
-                sim_read = self.fill_nodata(
-                    simArray, interpolation, int_meth, canopy_middle
-                )
+                try:
+                    sim_read, noData = self.fill_nodata(
+                        simArray, interpolation, int_meth, canopy_middle
+                    )
+                except ValueError as e:
+                    print(f"{simArray} ignored due to error: {e}")
+                    continue
 
                 try:
-                    # If array shape is wrong add flags
-                    if als_read.shape == sim_read.shape:
-                        rmse, rSquared, bias, noData, lenData, difference = (
-                            self.calc_metrics(als_read, sim_read)
+
+                    if (
+                        # Check array has correct shape
+                        als_read.shape == sim_read.shape
+                        # contains over 100 waves
+                        and np.count_nonzero(sim_read) > 100
+                        # check array contains any ground values
+                        and np.max(sim_read) > 0
+                    ):
+                        rmse, rSquared, bias, lenData, difference = self.calc_metrics(
+                            als_read, sim_read
                         )
                         # Save and plot tiff of difference with 0 values hidden
                         masked_diference = ma.masked_where(difference == 0, difference)
@@ -439,7 +450,7 @@ class DtmCreation(object):
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
                     else:
-                        print("Mismatched array shapes")
+                        print("Mismatched array shapes, or under 100 waves")
                         (
                             rmse,
                             rSquared,
@@ -522,14 +533,14 @@ if __name__ == "__main__":
     # Option to run on all sites
     if study_area == "all":
         study_sites = [
-            "Bonaly",
-            "hubbard_brook",
-            "la_selva",
-            "nouragues",
             "oak_ridge",
             "paracou",
             "robson_creek",
             "wind_river",
+            "Bonaly",
+            "hubbard_brook",
+            "la_selva",
+            "nouragues",
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:

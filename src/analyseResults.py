@@ -47,29 +47,38 @@ def analysisCommands():
         help=("Choose input based on lastools settings applied to find gound"),
     )
 
+    p.add_argument(
+        "--interpolation",
+        dest="intpSettings",
+        type=str,
+        default="",
+        help=("Choose input based on interpolation settings"),
+    )
     cmdargs = p.parse_args()
     return cmdargs
 
 
-def filePath(folder, las_settings):
+def filePath(folder, las_settings, interpolation):
     """Function to test file paths and glob"""
 
     file = f"data/{folder}"
 
-    file_list = glob(file + f"/summary_{folder}_{las_settings}.csv")
+    file_list = glob(file + f"/summary_{folder}_{las_settings}{interpolation}.csv")
     return file_list
 
 
-def read_csv(folder, las_settings):
+def read_csv(folder, las_settings, interpolation):
     # csv file iterations are named by las_settings
-    csv_file = filePath(folder, las_settings)
+    csv_file = filePath(folder, las_settings, interpolation)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
 
-    # find proportion of data pixels to no_data
+    # either justify, or negate by interpolating
+    """# find proportion of data pixels to no_data
     df["data_prop"] = (df["Data_count"] - df["NoData_count"]) / df["Data_count"]
 
     # Filter out rows where the proportion of valid pixels is over 50%
-    filtered_df = df[df["data_prop"] >= 0.5]
+    filtered_df = df[df["data_prop"] >= 0.5]"""
+    filtered_df = df[df["RMSE"] != -999.0]
     df_folder = filtered_df.groupby(["nPhotons", "Noise"])
 
     results = {
@@ -347,6 +356,7 @@ if __name__ == "__main__":
     results_csv = cmdargs.inFile
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
+    intp_setting = cmdargs.intpSettings
 
     # summary_scatter(3006)
     if site == "all":
@@ -363,14 +373,14 @@ if __name__ == "__main__":
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
             # read_csv2(area)
-            read_csv(area, las_settings)
+            read_csv(area, las_settings, intp_setting)
 
     else:
         # read_csv2(site)
-        read_csv(site, las_settings)
+        read_csv(site, las_settings, intp_setting)
 
     # merge bs results into one file
     df = concat_csv(las_settings)
-    plot3D(df)
+    # plot3D(df)
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

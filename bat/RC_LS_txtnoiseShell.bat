@@ -1,0 +1,3 @@
+G:\LAStools\bin\txt2las.exe -i Z:\s2559258\dissertation_AH24\data\robson_creek\pts_metric\*.pts -odir Z:\s2559258\dissertation_AH24\data\robson_creek\sim_las -utm 55S -cores 6
+G:\LAStools\bin\lasnoise.exe -i Z:\s2559258\dissertation_AH24\data\la_selva\sim_las\*.las -odir Z:\s2559258\dissertation_AH24\data\la_selva\sim_cleaned -step_xy 4 -step_z 0.5 -isolated 3 -remove_noise -cores 3
+G:\LAStools\bin\lasnoise.exe -i Z:\s2559258\dissertation_AH24\data\robson_creek\sim_las\*.las -odir Z:\s2559258\dissertation_AH24\data\robson_creek\sim_cleaned -step_xy 4 -step_z 0.5 -isolated 3 -remove_noise -cores 3
