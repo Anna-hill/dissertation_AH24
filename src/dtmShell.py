@@ -533,14 +533,14 @@ if __name__ == "__main__":
     # Option to run on all sites
     if study_area == "all":
         study_sites = [
-            "oak_ridge",
-            "paracou",
-            "robson_creek",
-            "wind_river",
             "Bonaly",
             "hubbard_brook",
             "la_selva",
             "nouragues",
+            "oak_ridge",
+            "paracou",
+            "robson_creek",
+            "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:

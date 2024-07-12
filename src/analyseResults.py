@@ -9,6 +9,10 @@ import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from lasBounds import append_results
 from plotting import three_D_scatter
+from matplotlib.animation import FuncAnimation
+
+# more plots
+# remove bins from plot where less than a number- justifyyyy???
 
 
 def analysisCommands():
@@ -98,6 +102,8 @@ def read_csv(folder, las_settings, interpolation):
         # Bin values by mean cc (as percentage)
         bin_size = 1
         bins = np.arange(0, 101, bin_size)
+
+        # if group < 1, filter out?
         group["CC_bin"] = pd.cut(
             (group["Mean_Canopy_cover"] * 100),
             bins=bins,
@@ -109,9 +115,13 @@ def read_csv(folder, las_settings, interpolation):
 
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
-        # Ignore N, P combos without any 3 < rmse
-        if np.any(mean_rmse <= 5):
-            beam_sens = group[group["RMSE"] > 5]["Mean_Canopy_cover"].min()
+
+        # Ignore N, P combos without any 4 < rmse
+        if np.any(mean_rmse <= 4):
+            if np.all(group["RMSE"] <= 4):
+                beam_sens = 1
+            else:
+                beam_sens = group[group["RMSE"] > 4]["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
@@ -121,14 +131,15 @@ def read_csv(folder, las_settings, interpolation):
                 Folder=folder,
                 nPhotons=photons,
                 Noise=noise,
-                beam_sensitivity=(beam_sens * 100),
+                beam_sensitivity=beam_sens,
                 RMSE=rmse_mean,
                 Bias=bias_mean,
             )
             # Plot the boxplots using seaborn
             plt.figure(figsize=(15, 8))
             # Add a horizontal dashed line at rmse=3
-            plt.axhline(y=5, color="grey", linestyle="--", linewidth=1)
+            plt.axhline(y=4, color="grey", linestyle="--", linewidth=1)
+            # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
@@ -184,27 +195,14 @@ def read_csv(folder, las_settings, interpolation):
             plt.close()
         else:
             print(
-                f"RMSE for {folder} Photons: {photons} and Noise: {noise} not below 3"
+                f"RMSE for {folder} Photons: {photons} and Noise: {noise} not below 4"
             )
     # save results to new csv
     resultsDf = pd.DataFrame(results)
     outCsv = f"data/beam_sensitivity/{las_settings}/{folder}.csv"
     resultsDf.to_csv(outCsv, index=False)
     print("Results written to: ", outCsv)
-    return df
-
-
-def read_csv2(filename):
-    df = pd.read_csv(filename, delimiter=",", header=0)
-    df_filtered = df[df["Noise"] < 104]
-    df_folder = df.groupby(["Folder", "Noise"])  # can group by multiple things
-    print(df_folder.get_group(["wind_river"], [4]))
-    # df_filtered = df[df["RMSE"] <= 3]
-    plt.scatter(df_filtered["Mean_Canopy_cover"], df_filtered["RMSE"])
-    plt.xlabel("Mean canopy cover")
-    plt.ylabel("RMSE")
-    plt.show()
-    return df
+    return outCsv
 
 
 def summary_scatter(las_settings):
@@ -264,11 +262,11 @@ def summary_scatter(las_settings):
         plt.show()
 
 
-def concat_csv(las_settings):
+def concat_csv(csv_list, las_settings):
 
     # file path function
     file_path = f"data/beam_sensitivity/{las_settings}"
-    csv_list = glob(file_path + "/*.csv")
+    # csv_list = glob(file_path + "/*.csv")
 
     # for csv in file_list:
     #  csv_list.append(csv[0])
@@ -281,7 +279,8 @@ def concat_csv(las_settings):
     # make 3d plot of photon, noise, bs (folder as colour?)
     # Most high noise vals removed in prev function
     # three_D_scatter(df["nPhotons"], df["Noise"], df["beam_sensitivity"], df["Folder"], las_settings)
-    outCsv = f"data/beam_sensitivity/{las_settings}/summary_stats.csv"
+    outCsv = f"{file_path}/summary_stats.csv"
+    print(f"file saved to: {outCsv}")
     df.to_csv(outCsv, index=False)
     return df
 
@@ -296,58 +295,34 @@ def plot3D(df):
 
     fig = plt.figure(figsize=(15, 8))
     ax = fig.add_subplot(projection="3d")
-    X = site_group["nPhotons"]
-    Y = site_group["Noise"]
-    Z = site_group["beam_sensitivity"]
+
     # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
 
     for site in df["Folder"].unique():
         site_group = df[df["Folder"] == site]
-        ax.plot_wireframe(
-            X, Y, Z, color=color_map[site], label=site, rstride=10, cstride=10
-        )
+        X = site_group["nPhotons"]
+        Y = site_group["Noise"]
+        Z = site_group["beam_sensitivity"]
+        scat = ax.scatter(X, Y, Z, color=color_map[site], label=site)
     ax.set_xlabel("Photons")
     ax.set_ylabel("Noise")
     ax.set_zlabel("Beam Sensitivity")
     ax.legend(loc="upper left")
 
-    # Rotate the axes and update
-    for angle in range(0, 360 * 4 + 1):
-        # Normalize the angle to the range [-180, 180] for display
-        angle_norm = (angle + 180) % 360 - 180
+    # Function to update the view angle
+    def update(frame):
+        ax.view_init(elev=30, azim=frame)
+        return (scat,)
 
-        # Cycle through a full rotation of elevation, then azimuth, roll, and all
-        elev = azim = roll = 0
-        if angle <= 360:
-            elev = angle_norm
-        elif angle <= 360 * 2:
-            azim = angle_norm
-        elif angle <= 360 * 3:
-            roll = angle_norm
-        else:
-            elev = azim = roll = angle_norm
+    # Create an animation
+    ani = FuncAnimation(
+        fig, update, frames=np.arange(0, 360, 1), interval=50, blit=True
+    )
 
-        # Update the axis view and title
-        ax.view_init(elev, azim, roll)
-        plt.title("Elevation: %d°, Azimuth: %d°, Roll: %d°" % (elev, azim, roll))
+    # Save the animation as a GIF
+    ani.save(f"figures/scatter_plots/rotating_{las_settings}.gif", writer="imagemagick")
+    print(f"Gif saved to f 'figures/scatter_plots/rotating_{las_settings}.gif'")
 
-        plt.draw()
-        plt.pause(0.001)
-
-    # plt.title(las_settings)
-    # plt.savefig(f"figures/scatter_plots/{las_settings}.png")
-    # plt.close
-
-
-# canopy as pc
-# group by canopy (1 pc)
-# mean rmse per canopy
-# make boxplot of rmse/canopy cover
-# find beam sensitivity
-# add vertical line at bs point
-# https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.boxplot.html
-
-# shell function to interpret plot type inputs if too many?
 
 if __name__ == "__main__":
     t = time.perf_counter()
@@ -357,6 +332,8 @@ if __name__ == "__main__":
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
     intp_setting = cmdargs.intpSettings
+
+    csv_paths = []
 
     # summary_scatter(3006)
     if site == "all":
@@ -372,15 +349,16 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            # read_csv2(area)
-            read_csv(area, las_settings, intp_setting)
+            csv_paths.append(read_csv(area, las_settings, intp_setting))
+
+        # merge bs results into one file
+        df = concat_csv(csv_paths, las_settings)
 
     else:
-        # read_csv2(site)
         read_csv(site, las_settings, intp_setting)
 
-    # merge bs results into one file
-    df = concat_csv(las_settings)
-    # plot3D(df)
+    # Make rotating 3D plot - saves as gif but very slow
+    # set colours and font (rc params?)
+    ##plot3D(df)
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
