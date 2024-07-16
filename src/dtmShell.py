@@ -412,7 +412,8 @@ class DtmCreation(object):
                         )
 
                         image_name = f"figures/difference/{folder}/CC{clip_match}.png"
-                        two_plots(masked_diference, als_canopy, image_name, clip_match)
+                        image_title = f"Absolute error for {nPhotons} photons and {noise} noise ({folder})"
+                        two_plots(masked_diference, als_canopy, image_name, image_title)
                         # extract metrics from als arrays
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)

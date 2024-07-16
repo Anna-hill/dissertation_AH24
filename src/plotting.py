@@ -24,15 +24,33 @@ def two_plots(data, data2, outname, title):
         data2 (array): Different data set
         outname (str): output file name
     """
+    # set plot settings
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.rcParams["figure.constrained_layout.use"] = True
+    plt.rcParams["figure.figsize"] = (8, 6)
+    plt.rcParams["xtick.labelsize"] = 10
+    plt.rcParams["xtick.major.size"] = 2
+    plt.rcParams["xtick.major.width"] = 0.4
+    plt.rcParams["xtick.major.pad"] = 2
+    plt.rcParams["ytick.labelsize"] = 10
+    plt.rcParams["ytick.major.size"] = 2
+    plt.rcParams["ytick.major.width"] = 0.4
+    plt.rcParams["ytick.major.pad"] = 2
+    plt.rcParams["axes.labelsize"] = 10
+    plt.rcParams["axes.linewidth"] = 0.5
+    plt.rcParams["axes.labelpad"] = 2
+    plt.rcParams["axes.titlesize"] = 16
+    plt.rcParams["axes.titlelocation"] = "center"
 
     fig = plt.figure()
+    fig.suptitle(title, fontsize="large")
     ax1 = fig.add_subplot(121)
     fig1 = ax1.imshow(
         data,
         origin="upper",
         cmap="Spectral",
     )
-    plt.title(title, loc="center")
+
     fig.colorbar(
         fig1,
         ax=ax1,
@@ -86,6 +104,20 @@ def one_plot(data, outname, cmap, caption):
         data (array): Data to plot
         outname (str): Output file name
     """
+    # set plot settings
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.rcParams["figure.constrained_layout.use"] = True
+    plt.rcParams["xtick.labelsize"] = 8
+    plt.rcParams["xtick.major.size"] = 2
+    plt.rcParams["xtick.major.width"] = 0.4
+    plt.rcParams["xtick.major.pad"] = 2
+    plt.rcParams["ytick.labelsize"] = 8
+    plt.rcParams["ytick.major.size"] = 2
+    plt.rcParams["ytick.major.width"] = 0.4
+    plt.rcParams["ytick.major.pad"] = 2
+    plt.rcParams["axes.labelsize"] = 10
+    plt.rcParams["axes.linewidth"] = 0.5
+    plt.rcParams["axes.titlesize"] = 16
 
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
@@ -97,41 +129,8 @@ def one_plot(data, outname, cmap, caption):
     plt.close()
 
 
-def three_D_scatter(x_var, y_var, z_var, colour, title):
-    # See link below for guidance on making plots rotate - website and github?
-    # https://matplotlib.org/stable/gallery/mplot3d/rotate_axes3d_sgskip.html#sphx-glr-gallery-mplot3d-rotate-axes3d-sgskip-py
-
-    color_map = {
-        site: color
-        for site, color in zip(colour.unique(), plt.cm.get_cmap("Dark2").colors)
-    }
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
-
-    # n = 100
-
-    # For each set of style and range settings, plot n random points in the box
-    # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-    # for m, zlow, zhigh in [("o", -50, -25), ("^", -30, -5)]:
-    # xs = randrange(n, 23, 32)
-    # ys = randrange(n, 0, 100)
-    # zs = randrange(n, zlow, zhigh)
-    ax.scatter(
-        x_var,
-        y_var,
-        z_var,
-        color=color_map[colour],
-    )
-
-    ax.set_xlabel("X Label")
-    ax.set_ylabel("Y Label")
-    ax.set_zlabel("Z Label")
-    plt.title(title)
-    plt.show()
-
-
 def folder_colour(study_site):
+    # note: change colours - not distinct enough
     """Retrieves EPSG code for each study site for DTM creation
 
     Args:
@@ -180,7 +179,7 @@ if __name__ == "__main__":
     # epsg = findEPSG(folder)
     two_plots(masked_data1, masked_data2, outname, "beans")"""
 
-    three_D_scatter()
+    # three_D_scatter()
 
     # Test efficiency
     t = time.perf_counter() - t

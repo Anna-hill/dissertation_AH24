@@ -78,10 +78,11 @@ def read_csv(folder, las_settings, interpolation):
 
     # remove no data rows
     filtered_df = df[df["RMSE"] != -999.0]
-    df_folder = filtered_df.groupby(["nPhotons", "Noise"])
+    df_p_n = filtered_df.groupby(["nPhotons", "Noise"])
 
     results = {
         "Folder": [],
+        "las_settings": [],
         "nPhotons": [],
         "Noise": [],
         "RMSE": [],
@@ -89,7 +90,7 @@ def read_csv(folder, las_settings, interpolation):
         "beam_sensitivity": [],
     }
 
-    for (photons, noise), group in df_folder:
+    for (photons, noise), group in df_p_n:
 
         # Bin values by mean cc (as percentage)
         bin_size = 2
@@ -122,6 +123,7 @@ def read_csv(folder, las_settings, interpolation):
             if np.all(group["RMSE"] <= 4):
                 beam_sens = 1
             else:
+                # beam sens on all rmse, not mean bin?
                 beam_sens = group[group["RMSE"] > 4]["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
@@ -130,18 +132,38 @@ def read_csv(folder, las_settings, interpolation):
             append_results(
                 results,
                 Folder=folder,
+                las_settings=las_settings,
                 nPhotons=photons,
                 Noise=noise,
                 beam_sensitivity=beam_sens,
                 RMSE=rmse_mean,
                 Bias=bias_mean,
             )
-            # Plot the boxplots using seaborn
+
+            # set plot settings
             plt.rcParams["font.family"] = "Times New Roman"
-            plt.figure(figsize=(15, 8))
+            plt.rcParams["figure.constrained_layout.use"] = True
+            plt.rcParams["figure.figsize"] = (8, 5)
+            plt.rcParams["xtick.labelsize"] = 8
+            plt.rcParams["xtick.major.size"] = 2
+            plt.rcParams["xtick.major.width"] = 0.4
+            plt.rcParams["xtick.major.pad"] = 2
+            plt.rcParams["ytick.labelsize"] = 8
+            plt.rcParams["ytick.major.size"] = 2
+            plt.rcParams["ytick.major.width"] = 0.4
+            plt.rcParams["ytick.major.pad"] = 2
+            plt.rcParams["axes.labelsize"] = 10
+            plt.rcParams["axes.linewidth"] = 0.5
+            plt.rcParams["axes.labelpad"] = 3
+            plt.rcParams["axes.titlesize"] = 12
+            plt.rcParams["lines.linewidth"] = 1
+            plt.rcParams["lines.markersize"] = 4
+
+            # Plot the boxplots using seaborn
+            plt.figure()
             # Add a horizontal dashed line at rmse=3
             plt.axhline(y=4, color="grey", linestyle="--", linewidth=1)
-            plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
+            # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
@@ -150,10 +172,12 @@ def read_csv(folder, las_settings, interpolation):
                 width=0.6,
                 color=folder_colour(folder),
             )
+            """
             # Fit a line of best fit to the mean rmse values (make function???)
             x = np.arange(len(bin_labels)).reshape(-1, 1)
             y = mean_rmse
 
+            # would cubic model fit better?
             # Filter out NaN values
             mask = ~np.isnan(y)
             x_filtered = x[mask].reshape(-1, 1)
@@ -168,7 +192,7 @@ def read_csv(folder, las_settings, interpolation):
                 y_pred,
                 color="b",
                 label="Mean RMSE (Line of Best Fit)",
-            )
+            )"""
 
             # Set x-axis tick labels
             plt.xticks(ticks=np.arange(len(bin_labels)), labels=bin_labels, rotation=90)
@@ -177,7 +201,7 @@ def read_csv(folder, las_settings, interpolation):
             plt.xlabel("Mean Canopy cover (%)")
             plt.ylabel("RMSE (m)")
             plt.title(
-                f"RMSE for Photons: {photons} and Noise: {noise} (las settings={las_settings})"
+                f"{folder}: {photons} photons and {noise} noise with las settings {las_settings}"
             )
 
             plt.savefig(
@@ -214,13 +238,28 @@ def concat_csv(csv_list, las_settings):
 
 def plot3D(df):
 
-    # set colour scheme
-    color_map = {
-        site: color
-        for site, color in zip(df["Folder"].unique(), plt.cm.get_cmap("Dark2").colors)
-    }
+    # set plot settings
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.rcParams["figure.constrained_layout.use"] = True
+    plt.rcParams["figure.figsize"] = (8, 6)
+    plt.rcParams["legend.fontsize"] = 10
+    plt.rcParams["legend.frameon"] = False
+    plt.rcParams["xtick.labelsize"] = 10
+    plt.rcParams["xtick.major.size"] = 2
+    plt.rcParams["xtick.major.width"] = 0.4
+    plt.rcParams["xtick.major.pad"] = 2
+    plt.rcParams["ytick.labelsize"] = 10
+    plt.rcParams["ytick.major.size"] = 2
+    plt.rcParams["ytick.major.width"] = 0.4
+    plt.rcParams["ytick.major.pad"] = 2
+    plt.rcParams["axes.labelsize"] = 12
+    plt.rcParams["axes.linewidth"] = 0.5
+    plt.rcParams["axes.labelpad"] = 3
+    plt.rcParams["axes.titlesize"] = 14
+    plt.rcParams["lines.linewidth"] = 1
+    plt.rcParams["lines.markersize"] = 4
 
-    fig = plt.figure(figsize=(15, 8))
+    fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
 
     # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
@@ -230,13 +269,13 @@ def plot3D(df):
         X = site_group["nPhotons"]
         Y = site_group["Noise"]
         Z = site_group["beam_sensitivity"]
-        scat = ax.scatter(X, Y, Z, color=color_map[site], label=site)
+        scat = ax.scatter(X, Y, Z, color=folder_colour(site), label=site)
     ax.set_xlabel("Photons")
     ax.set_ylabel("Noise")
     ax.set_zlabel("Beam Sensitivity")
     ax.legend(loc="upper left")
 
-    plt.title(las_settings)
+    plt.title(f"Beam Sensitivity for {las_settings} las settings")
 
     # create static image
     fig.savefig(f"figures/scatter_plots/{las_settings}.png")
@@ -256,7 +295,7 @@ def plot3D(df):
     print(f"Gif saved to f 'figures/scatter_plots/rotating_{las_settings}.gif'")
 
     # close figure
-    fig.close
+    fig.close()
 
 
 if __name__ == "__main__":
@@ -288,6 +327,7 @@ if __name__ == "__main__":
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
+        # density_hex(df)
         plot3D(df)
 
     else:

@@ -109,7 +109,7 @@ def metric_functions(coords, data, cmap, caption, outname, epsg):
 
     # make als ground tiff
     raster_data, bounds = create_geo_array(coords, data)
-    create_tiff(raster_data, bounds, epsg, outname)  # removed for efficiency
+    # create_tiff(raster_data, bounds, epsg, outname)  # removed for efficiency
 
     # mask no data and visualise
     # open = rasterio.open(output_path)
