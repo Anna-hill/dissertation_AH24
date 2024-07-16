@@ -82,6 +82,38 @@ def append_results(results, **kwargs):
         results[key].append(value)
 
 
+def match_files(als_files, sim_files):
+    # Dictionary to store matched files
+    matches = {}
+
+    # regex pattern to find coords in names
+    pattern = regex.compile(r"(\d+_\d+)")
+
+    # Dictionary for als files with coords as keys
+    als_dict = {
+        pattern.search(file).group(1): file
+        for file in als_files
+        if pattern.search(file)
+    }
+
+    # Dictionary for sim files with coords as keys
+    sim_dict = {}
+    for file in sim_files:
+        match = pattern.search(file)
+        if match:
+            key = match.group(1)
+            if key not in sim_dict:
+                sim_dict[key] = []
+            sim_dict[key].append(file)
+
+    # If file names match, matches key will be als name, and values will be sim files
+    for key, file1 in als_dict.items():
+        if key in sim_dict:
+            matches[file1] = sim_dict[key]
+
+    return matches
+
+
 # if __name__ == "__main__":
 # lasMBR("data/paracou/raw_las/Paracou2009_284584_580489.las")
 # name = clipNames("data/Bonaly/raw_las/NT2065_4PPM_LAS_PHASE5.las", ".las")

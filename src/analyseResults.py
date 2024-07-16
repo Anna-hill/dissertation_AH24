@@ -8,7 +8,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from lasBounds import append_results
-from plotting import three_D_scatter
+from plotting import folder_colour
 from matplotlib.animation import FuncAnimation
 
 # more plots
@@ -76,12 +76,7 @@ def read_csv(folder, las_settings, interpolation):
     csv_file = filePath(folder, las_settings, interpolation)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
 
-    # either justify, or negate by interpolating
-    """# find proportion of data pixels to no_data
-    df["data_prop"] = (df["Data_count"] - df["NoData_count"]) / df["Data_count"]
-
-    # Filter out rows where the proportion of valid pixels is over 50%
-    filtered_df = df[df["data_prop"] >= 0.5]"""
+    # remove no data rows
     filtered_df = df[df["RMSE"] != -999.0]
     df_folder = filtered_df.groupby(["nPhotons", "Noise"])
 
@@ -96,11 +91,8 @@ def read_csv(folder, las_settings, interpolation):
 
     for (photons, noise), group in df_folder:
 
-        # beam sensitivity?
-        # print(group["RMSE"] > 3.0["Mean_Canopy_cover"].min)
-
         # Bin values by mean cc (as percentage)
-        bin_size = 1
+        bin_size = 2
         bins = np.arange(0, 101, bin_size)
 
         # if group < 1, filter out?
@@ -112,6 +104,15 @@ def read_csv(folder, las_settings, interpolation):
         )
         # Set bin labels as single number as more readable
         bin_labels = [f"{b+bin_size}" for b in bins[:-1]]
+
+        # Filter out bins with fewer than 2 values
+        bin_counts = group["CC_bin"].value_counts()
+        valid_bins = bin_counts[bin_counts >= 2].index
+        group = group[group["CC_bin"].isin(valid_bins)]
+
+        if group.empty:
+            print(f"Not enough data to plot for Photons: {photons}, Noise: {noise}")
+            continue
 
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
@@ -136,16 +137,18 @@ def read_csv(folder, las_settings, interpolation):
                 Bias=bias_mean,
             )
             # Plot the boxplots using seaborn
+            plt.rcParams["font.family"] = "Times New Roman"
             plt.figure(figsize=(15, 8))
             # Add a horizontal dashed line at rmse=3
             plt.axhline(y=4, color="grey", linestyle="--", linewidth=1)
-            # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
+            plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
                 data=group,
                 whis=[0, 100],
                 width=0.6,
+                color=folder_colour(folder),
             )
             # Fit a line of best fit to the mean rmse values (make function???)
             x = np.arange(len(bin_labels)).reshape(-1, 1)
@@ -167,21 +170,9 @@ def read_csv(folder, las_settings, interpolation):
                 label="Mean RMSE (Line of Best Fit)",
             )
 
-            # Plot a line joining all the mean values of rmse for each bin
-            # very disjointed and hard to understand. revisit when more data points
-            """plt.plot(
-                np.arange(len(bin_labels)),
-                mean_rmse,
-                # marker="o",
-                color="r",
-                label="Mean RMSE",
-            )"""
-
             # Set x-axis tick labels
             plt.xticks(ticks=np.arange(len(bin_labels)), labels=bin_labels, rotation=90)
 
-            # Set y-axis range
-            # plt.ylim(0, 50)
             # set labels and title
             plt.xlabel("Mean Canopy cover (%)")
             plt.ylabel("RMSE (m)")
@@ -205,80 +196,16 @@ def read_csv(folder, las_settings, interpolation):
     return outCsv
 
 
-def summary_scatter(las_settings):
-    """Scatter plots combining all sites"""
-    study_sites = [
-        "Bonaly",
-        "hubbard_brook",
-        "la_selva",
-        "nouragues",
-        "oak_ridge",
-        "paracou",
-        "robson_creek",
-        "wind_river",
-    ]
-    csv_list = []
-    for site in study_sites:
-        csv = filePath(site, las_settings)
-        csv_list.append(csv[0])
-    # print(csv_list)
-    dfs = [pd.read_csv(file) for file in csv_list]
-
-    # Concatenate all DataFrames into one
-    df = pd.concat(dfs, ignore_index=True)
-
-    # find proportion of data pixels to no_data
-    df["data_prop"] = (df["Data_count"] - df["NoData_count"]) / df["Data_count"]
-
-    # Filter out rows where the proportion of valid pixels is over 50%
-    filtered_df = df[df["data_prop"] >= 0.5]
-    print(filtered_df)
-
-    # group into n p combinations
-    df_folder = filtered_df.groupby(["nPhotons", "Noise"])
-
-    # check examples for other ways to do this
-    color_map = {
-        site: color
-        for site, color in zip(
-            filtered_df["Folder"].unique(), plt.cm.get_cmap("Dark2").colors
-        )
-    }
-
-    for (photons, noise), group in df_folder:
-        plt.figure()
-        for site in group["Folder"].unique():
-            site_group = group[group["Folder"] == site]
-            plt.scatter(
-                site_group["Mean_Canopy_cover"],
-                site_group["RMSE"],
-                color=color_map[site],
-                label=site,
-            )
-        plt.title(f"Error for Photons: {photons} and Noise: {noise} ({las_settings})")
-        plt.xlabel("Canopy cover")
-        plt.ylabel("RMSE")
-        plt.legend(title="Study Area")
-        plt.show()
-
-
 def concat_csv(csv_list, las_settings):
 
     # file path function
     file_path = f"data/beam_sensitivity/{las_settings}"
-    # csv_list = glob(file_path + "/*.csv")
 
-    # for csv in file_list:
-    #  csv_list.append(csv[0])
-    # print(csv_list)
     dfs = [pd.read_csv(file) for file in csv_list]
 
     # Concatenate all DataFrames into one
     df = pd.concat(dfs, ignore_index=True)
 
-    # make 3d plot of photon, noise, bs (folder as colour?)
-    # Most high noise vals removed in prev function
-    # three_D_scatter(df["nPhotons"], df["Noise"], df["beam_sensitivity"], df["Folder"], las_settings)
     outCsv = f"{file_path}/summary_stats.csv"
     print(f"file saved to: {outCsv}")
     df.to_csv(outCsv, index=False)
@@ -309,6 +236,11 @@ def plot3D(df):
     ax.set_zlabel("Beam Sensitivity")
     ax.legend(loc="upper left")
 
+    plt.title(las_settings)
+
+    # create static image
+    fig.savefig(f"figures/scatter_plots/{las_settings}.png")
+
     # Function to update the view angle
     def update(frame):
         ax.view_init(elev=30, azim=frame)
@@ -322,6 +254,9 @@ def plot3D(df):
     # Save the animation as a GIF
     ani.save(f"figures/scatter_plots/rotating_{las_settings}.gif", writer="imagemagick")
     print(f"Gif saved to f 'figures/scatter_plots/rotating_{las_settings}.gif'")
+
+    # close figure
+    fig.close
 
 
 if __name__ == "__main__":
@@ -353,12 +288,13 @@ if __name__ == "__main__":
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
+        plot3D(df)
 
     else:
         read_csv(site, las_settings, intp_setting)
 
     # Make rotating 3D plot - saves as gif but very slow
     # set colours and font (rc params?)
-    ##plot3D(df)
+
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

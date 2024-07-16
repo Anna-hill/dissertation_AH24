@@ -164,39 +164,6 @@ class DtmCreation(object):
         return als_ground, als_canopy, als_slope, als_t_height
 
     @staticmethod
-    # Static methods not dependant on class itself, attributes
-    def match_files(als_files, sim_files):
-        # Dictionary to store matched files
-        matches = {}
-
-        # regex pattern to find coords in names
-        pattern = regex.compile(r"(\d+_\d+)")
-
-        # Dictionary for als files with coords as keys
-        als_dict = {
-            pattern.search(file).group(1): file
-            for file in als_files
-            if pattern.search(file)
-        }
-
-        # Dictionary for sim files with coords as keys
-        sim_dict = {}
-        for file in sim_files:
-            match = pattern.search(file)
-            if match:
-                key = match.group(1)
-                if key not in sim_dict:
-                    sim_dict[key] = []
-                sim_dict[key].append(file)
-
-        # If file names match, matches key will be als name, and values will be sim files
-        for key, file1 in als_dict.items():
-            if key in sim_dict:
-                matches[file1] = sim_dict[key]
-
-        return matches
-
-    @staticmethod
     def rasterio_write(data, outname, template_raster, nodata):
         """Create output geotiff from array and pre-existing geotiff with rasterio
 
@@ -362,7 +329,7 @@ class DtmCreation(object):
         sim_list = glob(sim_path + "/*.tif")
 
         # Pair up ALS and sim files for comparison
-        matched_files = self.match_files(als_metric_list, sim_list)
+        matched_files = lasBounds.match_files(als_metric_list, sim_list)
 
         # Define regex patterns to extract info from file names
         rNPhotons = r"[p]+\d+"
@@ -544,14 +511,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            dtm_creator.createDTM(site, las_settings)
+            # dtm_creator.createDTM(site, las_settings)
             dtm_creator.compareDTM(site, interpolation, int_meth, las_settings)
 
     # Run on specified site
     else:
 
         print(f"working on {study_area}")
-        dtm_creator.createDTM(study_area, las_settings)
+        # dtm_creator.createDTM(study_area, las_settings)
         dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)
 
     t = time.perf_counter() - t

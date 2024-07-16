@@ -41,6 +41,8 @@ def run_dtmShell(folder, las_settings):
             f"{folder}",
             "--lassettings",
             f"{las_settings}",
+            "--interpolate",
+            "True",
         ],
         check=True,
     )

@@ -23,14 +23,6 @@ def gediCommands():
     )
 
     p.add_argument(
-        "--everywhere",
-        dest="everyWhere",
-        type=int,
-        default="0",
-        help=("Whether to run code on all study sites, 0 no, 1 yes"),
-    )
-
-    p.add_argument(
         "--noise",
         dest="noise",
         type=int,
@@ -243,22 +235,22 @@ if __name__ == "__main__":
             "hubbard_brook",
             "la_selva",
             "nouragues",
-            "oak_ridge",
+            # "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",
+            # "wind_river",
         ]
         print(f"working on all sites {study_sites}")
         for site in study_sites:
-            runGRat(site)
-            metricText(site)
+            # runGRat(site)
+            # metricText(site)
             runMetric(site, set_noise, set_pCount)
 
     # Only process given site
     else:
         print(f"working on {study_area}")
-        runGRat(study_area)
-        metricText(study_area)
+        # runGRat(study_area)
+        # metricText(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
     # Test efficiency

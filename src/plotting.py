@@ -131,6 +131,33 @@ def three_D_scatter(x_var, y_var, z_var, colour, title):
     plt.show()
 
 
+def folder_colour(study_site):
+    """Retrieves EPSG code for each study site for DTM creation
+
+    Args:
+        study_site (str): study site name
+
+    Returns:
+        Assigned Hex code for each site
+    """
+    colours = {
+        "Bonaly": "#003f5c",
+        "hubbard_brook": "#2f4b7c",
+        "la_selva": "#665191",
+        "nouragues": "#a05195",
+        "oak_ridge": "#d45087",
+        "paracou": "#f95d6a",
+        "robson_creek": "#ff7c43",
+        "wind_river": "#ffa600",
+        "test": "#665191",
+    }
+    if study_site in colours:
+        return colours[study_site]
+
+    # Unrecognised sites return as black
+    return "#000000"
+
+
 if __name__ == "__main__":
     t = time.perf_counter()
 
