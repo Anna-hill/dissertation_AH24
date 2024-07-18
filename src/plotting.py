@@ -1,7 +1,5 @@
 """Script to create maps from any input tiff file"""
 
-# georeferencing currently not working
-
 import time
 import numpy as np
 
@@ -10,7 +8,7 @@ from matplotlib import pyplot as plt
 
 # import matplotlib.colors as colors
 # import cartopy.crs as ccrs
-from canopyCover import read_raster_and_extent
+# from canopyCover import read_raster_and_extent
 from lasBounds import removeStrings, findEPSG
 
 # set font?
@@ -159,27 +157,6 @@ def folder_colour(study_site):
 
 if __name__ == "__main__":
     t = time.perf_counter()
-
-    # Load command  line arguments
-    """cmdargs = getCmdArgs()
-    infile = file_pseudo(cmdargs.inName)  # Use full file path to tiff
-
-    plotOption = cmdargs.plotType
-    output_path = out_pseudo(cmdargs.outPath)
-    outname = f"{output_path}{cmdargs.outName}"
-
-    file1 = "data/test/als_dtm/826000.0_1149352.8.tif"
-    file2 = "data/test/als_canopy/000073_las_dns.tif"
-    folder = "test"
-
-    outname = f"figures/difference/plotting1"
-
-    masked_data1, affine1, crs1, extent1 = read_raster_and_extent(file1)
-    masked_data2, affine2, crs2, extent2 = read_raster_and_extent(file2)
-    # epsg = findEPSG(folder)
-    two_plots(masked_data1, masked_data2, outname, "beans")"""
-
-    # three_D_scatter()
 
     # Test efficiency
     t = time.perf_counter() - t

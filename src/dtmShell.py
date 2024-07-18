@@ -376,25 +376,28 @@ class DtmCreation(object):
                 )
                 # find nodata value
                 canopy_middle = self.find_nodata(als_read, als_height)
-                # Fill nodata gaps
                 try:
-                    sim_read, noData = self.fill_nodata(
-                        simArray, interpolation, int_meth, canopy_middle
-                    )
-                except ValueError as e:
-                    print(f"{sim_tif} ignored due to error: {e}")
-                    continue
-
-                try:
+                    """# contains over 100 waves
+                    if np.count_nonzero(simArray) > 100:
+                        # print(clip_match)
+                        # Fill nodata gaps
+                        sim_read, noData = self.fill_nodata(
+                            simArray, interpolation, int_meth, canopy_middle
+                        )
+                    else:
+                        
+                        continue"""
 
                     if (
                         # Check array has correct shape
-                        als_read.shape == sim_read.shape
-                        # contains over 100 waves
-                        and np.count_nonzero(sim_read) > 100
-                        # check array contains any ground values
-                        and np.max(sim_read) > 0
-                    ):
+                        als_read.shape == simArray.shape
+                        # Check array contains any ground values
+                        and np.max(simArray) > 0
+                        # Check array contains over 100 waves
+                        and np.count_nonzero(simArray) > 100):
+                        sim_read, noData = self.fill_nodata(
+                            simArray, interpolation, int_meth, canopy_middle
+                        )
                         rmse, rSquared, bias, lenData, difference = self.calc_metrics(
                             als_read, sim_read
                         )
@@ -418,7 +421,7 @@ class DtmCreation(object):
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
                     else:
-                        print("Mismatched array shapes, or under 100 waves")
+                        print(f"{clip_match} contains under 100 waves or has mismatched array shapes")
                         (
                             rmse,
                             rSquared,

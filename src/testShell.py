@@ -243,7 +243,7 @@ if __name__ == "__main__":
         print(f"working on all sites {study_sites}")
         for site in study_sites:
             # runGRat(site)
-            # metricText(site)
+            # metricText(site) # do not overwrite while als -raw removed
             runMetric(site, set_noise, set_pCount)
 
     # Only process given site

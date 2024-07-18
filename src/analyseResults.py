@@ -172,9 +172,9 @@ def read_csv(folder, las_settings, interpolation):
                 width=0.6,
                 color=folder_colour(folder),
             )
-            """
+
             # Fit a line of best fit to the mean rmse values (make function???)
-            x = np.arange(len(bin_labels)).reshape(-1, 1)
+            """x = np.arange(len(bin_labels)).reshape(-1, 1)
             y = mean_rmse
 
             # would cubic model fit better?
@@ -236,6 +236,43 @@ def concat_csv(csv_list, las_settings):
     return df
 
 
+def bs_subplots(df):
+    # Group the data by Noise
+    filtered_df = df[df["Noise"] != 5]
+    noise_groups = filtered_df.groupby("Noise")
+
+    # Create subplots
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 6))
+    axes = axes.flatten()  # Flatten the 2D array of axes to 1D for easy iteration
+
+    # Iterate over each Noise level and corresponding axis
+    for (noise, group), ax in zip(noise_groups, axes):
+        for folder in group["Folder"].unique():
+            folder_data = group[group["Folder"] == folder]
+
+            # beter conversion
+            nPhotons = folder_data["nPhotons"].to_numpy()
+            beam_sensitivity = folder_data["beam_sensitivity"].to_numpy()
+            ax.plot(
+                nPhotons,
+                beam_sensitivity,
+                # marker="o",
+                label=folder,
+                color=folder_colour(folder),
+            )
+        ax.axhline(y=0.98, color="grey", linestyle="--", linewidth=1)
+        ax.set_title(f"{noise} noise photons")
+        ax.set_xlabel("Number of signal photons")
+        ax.set_ylabel("Beam Sensitivity")
+        ax.set_ylim(0, 1)
+
+        # edit legend to only appear once, to the side
+        ax.legend()
+
+    fig.savefig(f"figures/line_plots/{las_settings}.png")
+    fig.close()
+
+
 def plot3D(df):
 
     # set plot settings
@@ -261,8 +298,6 @@ def plot3D(df):
 
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
-
-    # ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
 
     for site in df["Folder"].unique():
         site_group = df[df["Folder"] == site]
@@ -327,8 +362,9 @@ if __name__ == "__main__":
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
-        # density_hex(df)
-        plot3D(df)
+        print(df)
+        bs_subplots(df)
+        # plot3D(df)
 
     else:
         read_csv(site, las_settings, intp_setting)
