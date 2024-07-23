@@ -29,6 +29,7 @@ python3 src/dtmShell.py --studyarea Bonaly
 python3 src/dtmShell.py --studyarea test
 python3 src/dtmShell.py --studyarea hubbard_brook
 python3 src/dtmShell.py --studyarea la_selva --lassettings 400505
+python3 src/dtmShell.py --studyarea oak_ridge --lassettings 600501 --interpolate True
 
 
 
