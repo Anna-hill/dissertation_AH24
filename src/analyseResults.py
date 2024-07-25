@@ -65,6 +65,13 @@ def analysisCommands():
         default=4,
         help=("Beam sensitivty threshold"),
     )
+    p.add_argument(
+        "--outliers",
+        dest="bs_outlier",
+        type=int,
+        default=1,
+        help=("Whether to include RMSE values in upper quantile of cc bin in bs calc"),
+    )
     cmdargs = p.parse_args()
     return cmdargs
 
@@ -78,7 +85,7 @@ def filePath(folder, las_settings, interpolation):
     return file_list
 
 
-def read_csv(folder, las_settings, interpolation, bs_limit):
+def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
     # csv file iterations are named by las_settings
     csv_file = filePath(folder, las_settings, interpolation)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
@@ -127,11 +134,31 @@ def read_csv(folder, las_settings, interpolation, bs_limit):
 
         # Ignore N, P combos without any bs thresh < rmse
         if np.any(mean_rmse <= bs_limit):
-            if np.all(group["RMSE"] <= bs_limit):
-                beam_sens = 1
-            else:
-                # beam sens on all rmse, not mean bin?
-                beam_sens = group[group["RMSE"] > bs_limit]["Mean_Canopy_cover"].min()
+            if tf_outliers == 1:
+                if np.all(group["RMSE"] <= bs_limit):
+                    beam_sens = 1
+                else:
+                    # beam sens on all rmse, not mean bin?
+                    beam_sens = group[group["RMSE"] > bs_limit][
+                        "Mean_Canopy_cover"
+                    ].min()
+
+            # calculate beam sensitivity from RMSE values within lower 3 quartiles of CC bins
+            elif tf_outliers == 0:
+                # Define upper quantile threshold (0.75 for the 75th percentile)
+                upper_quantile = 0.75
+                # Calculate the RMSE value at the upper quantile
+                upper_quantile_threshold = group["RMSE"].quantile(upper_quantile)
+                # Filter RMSE values below the upper quantile threshold and above the bs_limit
+                filtered_rmse = group[
+                    (group["RMSE"] > bs_limit)
+                    & (group["RMSE"] <= upper_quantile_threshold)
+                ]
+                if np.all(filtered_rmse["RMSE"] <= bs_limit):
+                    beam_sens = 1
+                else:
+                    # Calculate the minimum Mean_Canopy_cover for the filtered RMSE values
+                    beam_sens = filtered_rmse["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
@@ -181,8 +208,8 @@ def read_csv(folder, las_settings, interpolation, bs_limit):
             )
 
             # Fit a line of best fit to the mean rmse values (make function???)
-            """x = np.arange(len(bin_labels)).reshape(-1, 1)
-            y = mean_rmse
+            # x = np.arange(len(bin_labels)).reshape(-1, 1)
+            """y = mean_rmse
 
             # would cubic model fit better?
             # Filter out NaN values
@@ -191,7 +218,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit):
             y_filtered = y[mask]
             model = LinearRegression()
             model.fit(x_filtered, y_filtered)
-            y_pred = model.predict(x_filtered)
+            y_pred = model.predict(x_filtered)S
 
             # Plot the line of best fit
             plt.plot(
@@ -215,6 +242,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit):
                 f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}.png"
             )
             plt.close()
+
         else:
             print(
                 f"RMSE for {folder} Photons: {photons} and Noise: {noise} not below 4"
@@ -374,6 +402,7 @@ if __name__ == "__main__":
     las_settings = cmdargs.lasSettings
     intp_setting = cmdargs.intpSettings
     bs_limit = cmdargs.bs_thresh
+    tf_outliers = cmdargs.bs_outlier
 
     csv_paths = []
 
@@ -391,7 +420,9 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            csv_paths.append(read_csv(area, las_settings, intp_setting, bs_limit))
+            csv_paths.append(
+                read_csv(area, las_settings, intp_setting, bs_limit, tf_outliers)
+            )
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
@@ -399,7 +430,8 @@ if __name__ == "__main__":
         # plot3D(df)
 
     else:
-        read_csv(site, las_settings, intp_setting, bs_limit)
+        print(tf_outliers)
+        read_csv(site, las_settings, intp_setting, bs_limit, tf_outliers)
 
     # Make rotating 3D plot - saves as gif but very slow
     # set colours and font (rc params?)
