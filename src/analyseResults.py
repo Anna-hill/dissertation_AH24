@@ -237,12 +237,16 @@ def concat_csv(csv_list, las_settings):
 
 
 def bs_subplots(df):
-    # Group the data by Noise
+    # filter out old results
     filtered_df = df[df["Noise"] != 5]
+    filtered_df = filtered_df[filtered_df["nPhotons"] != 400]
+
+    # Group the data by Noise
     noise_groups = filtered_df.groupby("Noise")
 
     # Create subplots
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 6))
+    # fig.tight_layout(rect=(0, 0, 1, 0.9))
     axes = axes.flatten()  # Flatten the 2D array of axes to 1D for easy iteration
 
     # Iterate over each Noise level and corresponding axis
@@ -256,7 +260,7 @@ def bs_subplots(df):
             ax.plot(
                 nPhotons,
                 beam_sensitivity,
-                # marker="o",
+                marker="o",
                 label=folder,
                 color=folder_colour(folder),
             )
@@ -266,11 +270,32 @@ def bs_subplots(df):
         ax.set_ylabel("Beam Sensitivity")
         ax.set_ylim(0, 1)
 
-        # edit legend to only appear once, to the side
-        ax.legend()
+    labels_handles = {
+        label: handle
+        for ax in fig.axes
+        for handle, label in zip(*ax.get_legend_handles_labels())
+    }
+
+    fig.legend(
+        labels_handles.values(),
+        labels_handles.keys(),
+        loc="center left",
+        bbox_to_anchor=(1.0, 0.5),
+        bbox_transform=plt.gcf().transFigure,
+        borderaxespad=0.0,
+    )
+
+    # legend.get_frame().set_alpha(1)
+    # legend.get_frame().set_facecolor("white")
+
+    # Adjust the layout to make room for the legend
+    # plt.subplots_adjust(right=0.85)
+    # edit legend to only appear once, to the side
+    # fig.legend(bbox_to_anchor=(1.05, 0), loc="lower left", borderaxespad=0.0)
 
     fig.savefig(f"figures/line_plots/{las_settings}.png")
-    fig.close()
+    print(f"Plot saved to saved to f 'figures/line_plots/{las_settings}.png'")
+    plt.clf()
 
 
 def plot3D(df):
@@ -354,7 +379,7 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",
+            # "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
@@ -362,7 +387,6 @@ if __name__ == "__main__":
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
-        print(df)
         bs_subplots(df)
         # plot3D(df)
 
