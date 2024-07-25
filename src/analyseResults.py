@@ -57,6 +57,20 @@ def analysisCommands():
         default="",
         help=("Choose input based on interpolation settings"),
     )
+    p.add_argument(
+        "--bs_thresh",
+        dest="bs_thresh",
+        type=float,
+        default=4,
+        help=("Beam sensitivty threshold"),
+    )
+    p.add_argument(
+        "--outliers",
+        dest="bs_outlier",
+        type=int,
+        default=1,
+        help=("Whether to include RMSE values in upper quantile of cc bin in bs calc"),
+    )
     cmdargs = p.parse_args()
     return cmdargs
 
@@ -70,7 +84,7 @@ def filePath(folder, las_settings, interpolation):
     return file_list
 
 
-def beam_sens(folder, las_settings, interpolation):
+def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
     # csv file iterations are named by las_settings
     csv_file = filePath(folder, las_settings, interpolation)
 
@@ -121,13 +135,33 @@ def beam_sens(folder, las_settings, interpolation):
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
 
-        # Ignore N, P combos without any 4 < rmse
-        if np.any(mean_rmse <= 4):
-            if np.all(group["RMSE"] <= 4):
-                beam_sens = 1
-            else:
-                # beam sens on all rmse, not mean bin?
-                beam_sens = group[group["RMSE"] > 4]["Mean_Canopy_cover"].min()
+        # Ignore N, P combos without any bs thresh < rmse
+        if np.any(mean_rmse <= bs_limit):
+            if tf_outliers == 1:
+                if np.all(group["RMSE"] <= bs_limit):
+                    beam_sens = 1
+                else:
+                    # beam sens on all rmse, not mean bin?
+                    beam_sens = group[group["RMSE"] > bs_limit][
+                        "Mean_Canopy_cover"
+                    ].min()
+
+            # calculate beam sensitivity from RMSE values within lower 3 quartiles of CC bins
+            elif tf_outliers == 0:
+                # Define upper quantile threshold (0.75 for the 75th percentile)
+                upper_quantile = 0.75
+                # Calculate the RMSE value at the upper quantile
+                upper_quantile_threshold = group["RMSE"].quantile(upper_quantile)
+                # Filter RMSE values below the upper quantile threshold and above the bs_limit
+                filtered_rmse = group[
+                    (group["RMSE"] > bs_limit)
+                    & (group["RMSE"] <= upper_quantile_threshold)
+                ]
+                if np.all(filtered_rmse["RMSE"] <= bs_limit):
+                    beam_sens = 1
+                else:
+                    # Calculate the minimum Mean_Canopy_cover for the filtered RMSE values
+                    beam_sens = filtered_rmse["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
@@ -164,7 +198,10 @@ def beam_sens(folder, las_settings, interpolation):
 
             # Plot the boxplots using seaborn
             plt.figure()
-            plt.axhline(y=4, color="grey", linestyle="--", linewidth=1)
+
+            # Add a horizontal dashed line at rmse=3
+            plt.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
+
             # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
@@ -209,16 +246,17 @@ def beam_sens(folder, las_settings, interpolation):
             )
 
             plt.savefig(
-                f"figures/box_plots/{folder}/box_p{photons}_n{noise}_{las_settings}.png"
+                f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}.png"
             )
             plt.close()
+
         else:
             print(
                 f"RMSE for {folder} Photons: {photons} and Noise: {noise} not below 4"
             )
     # save results to new csv
     resultsDf = pd.DataFrame(results)
-    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}.csv"
+    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}_bs{bs_limit}.csv"
     resultsDf.to_csv(outCsv, index=False)
     print("Results written to: ", outCsv)
     return outCsv
@@ -241,12 +279,16 @@ def concat_csv(csv_list, las_settings):
 
 
 def bs_subplots(df):
-    # Group the data by Noise
+    # filter out old results
     filtered_df = df[df["Noise"] != 5]
+    filtered_df = filtered_df[filtered_df["nPhotons"] != 400]
+
+    # Group the data by Noise
     noise_groups = filtered_df.groupby("Noise")
 
     # Create subplots
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 6))
+    # fig.tight_layout(rect=(0, 0, 1, 0.9))
     axes = axes.flatten()  # Flatten the 2D array of axes to 1D for easy iteration
 
     # Iterate over each Noise level and corresponding axis
@@ -270,11 +312,32 @@ def bs_subplots(df):
         ax.set_ylabel("Beam Sensitivity")
         ax.set_ylim(0, 1)
 
-        # edit legend to only appear once, to the side
-        ax.legend()
+    labels_handles = {
+        label: handle
+        for ax in fig.axes
+        for handle, label in zip(*ax.get_legend_handles_labels())
+    }
+
+    fig.legend(
+        labels_handles.values(),
+        labels_handles.keys(),
+        loc="center left",
+        bbox_to_anchor=(1.0, 0.5),
+        bbox_transform=plt.gcf().transFigure,
+        borderaxespad=0.0,
+    )
+
+    # legend.get_frame().set_alpha(1)
+    # legend.get_frame().set_facecolor("white")
+
+    # Adjust the layout to make room for the legend
+    # plt.subplots_adjust(right=0.85)
+    # edit legend to only appear once, to the side
+    # fig.legend(bbox_to_anchor=(1.05, 0), loc="lower left", borderaxespad=0.0)
 
     fig.savefig(f"figures/line_plots/{las_settings}.png")
-    fig.close()
+    print(f"Plot saved to saved to f 'figures/line_plots/{las_settings}.png'")
+    plt.clf()
 
 
 def plot3D(df):
@@ -345,6 +408,8 @@ if __name__ == "__main__":
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
     intp_setting = cmdargs.intpSettings
+    bs_limit = cmdargs.bs_thresh
+    tf_outliers = cmdargs.bs_outlier
 
     csv_paths = []
 
@@ -358,20 +423,21 @@ if __name__ == "__main__":
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",
+            # "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            csv_paths.append(beam_sens(area, las_settings, intp_setting))
+            csv_paths.append(
+                read_csv(area, las_settings, intp_setting, bs_limit, tf_outliers)
+            )
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
-        print(df)
         bs_subplots(df)
         # plot3D(df)
 
     else:
-        beam_sens(site, las_settings, intp_setting)
+        read_csv(site, las_settings, intp_setting, bs_limit, tf_outliers)
 
     # Make rotating 3D plot - saves as gif but very slow
     # set colours and font (rc params?)

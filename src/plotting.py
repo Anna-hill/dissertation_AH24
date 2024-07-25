@@ -99,13 +99,13 @@ def folder_colour(study_site):
     """
     colours = {
         "Bonaly": "#003f5c",
-        "hubbard_brook": "#2f4b7c",
-        "la_selva": "#665191",
-        "nouragues": "#a05195",
+        "hubbard_brook": "#339933",
+        "la_selva": "#ffbf00",
+        "nouragues": "#5900b3",
         "oak_ridge": "#d45087",
-        "paracou": "#f95d6a",
-        "robson_creek": "#ff7c43",
-        "wind_river": "#ffa600",
+        "paracou": "#3399ff",
+        "robson_creek": "#cc3300",
+        "wind_river": "#ff8000",
         "test": "#665191",
     }
     if study_site in colours:
