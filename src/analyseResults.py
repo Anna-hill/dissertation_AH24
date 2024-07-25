@@ -58,6 +58,13 @@ def analysisCommands():
         default="",
         help=("Choose input based on interpolation settings"),
     )
+    p.add_argument(
+        "--bs_thresh",
+        dest="bs_thresh",
+        type=float,
+        default=4,
+        help=("Beam sensitivty threshold"),
+    )
     cmdargs = p.parse_args()
     return cmdargs
 
@@ -71,7 +78,7 @@ def filePath(folder, las_settings, interpolation):
     return file_list
 
 
-def read_csv(folder, las_settings, interpolation):
+def read_csv(folder, las_settings, interpolation, bs_limit):
     # csv file iterations are named by las_settings
     csv_file = filePath(folder, las_settings, interpolation)
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
@@ -118,13 +125,13 @@ def read_csv(folder, las_settings, interpolation):
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
 
-        # Ignore N, P combos without any 4 < rmse
-        if np.any(mean_rmse <= 4):
-            if np.all(group["RMSE"] <= 4):
+        # Ignore N, P combos without any bs thresh < rmse
+        if np.any(mean_rmse <= bs_limit):
+            if np.all(group["RMSE"] <= bs_limit):
                 beam_sens = 1
             else:
                 # beam sens on all rmse, not mean bin?
-                beam_sens = group[group["RMSE"] > 4]["Mean_Canopy_cover"].min()
+                beam_sens = group[group["RMSE"] > bs_limit]["Mean_Canopy_cover"].min()
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
@@ -162,7 +169,7 @@ def read_csv(folder, las_settings, interpolation):
             # Plot the boxplots using seaborn
             plt.figure()
             # Add a horizontal dashed line at rmse=3
-            plt.axhline(y=4, color="grey", linestyle="--", linewidth=1)
+            plt.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
             # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
@@ -205,7 +212,7 @@ def read_csv(folder, las_settings, interpolation):
             )
 
             plt.savefig(
-                f"figures/box_plots/{folder}/box_p{photons}_n{noise}_{las_settings}.png"
+                f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}.png"
             )
             plt.close()
         else:
@@ -214,7 +221,7 @@ def read_csv(folder, las_settings, interpolation):
             )
     # save results to new csv
     resultsDf = pd.DataFrame(results)
-    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}.csv"
+    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}_bs{bs_limit}.csv"
     resultsDf.to_csv(outCsv, index=False)
     print("Results written to: ", outCsv)
     return outCsv
@@ -366,6 +373,7 @@ if __name__ == "__main__":
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
     intp_setting = cmdargs.intpSettings
+    bs_limit = cmdargs.bs_thresh
 
     csv_paths = []
 
@@ -383,7 +391,7 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            csv_paths.append(read_csv(area, las_settings, intp_setting))
+            csv_paths.append(read_csv(area, las_settings, intp_setting, bs_limit))
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
@@ -391,7 +399,7 @@ if __name__ == "__main__":
         # plot3D(df)
 
     else:
-        read_csv(site, las_settings, intp_setting)
+        read_csv(site, las_settings, intp_setting, bs_limit)
 
     # Make rotating 3D plot - saves as gif but very slow
     # set colours and font (rc params?)
