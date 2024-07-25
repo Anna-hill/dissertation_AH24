@@ -82,6 +82,7 @@ class DtmCreation(object):
         for idx, sim_file in enumerate(sim_list):
             # Keep original file name
             clip_file = lasBounds.clipNames(sim_file, ".las")
+            print(clip_file)
             print(f"working on {folder} {idx + 1} of {len(sim_list)}")
 
             # find epsg code for study area
@@ -250,7 +251,7 @@ class DtmCreation(object):
         return mean_cc, std_cc
 
     def find_nodata(self, ground_elev, canopy_elev):
-        """Justify heavily! funciton finds suitable no data value for empty pixels where ground not found.
+        """Justify heavily! function finds suitable no data value for empty pixels where ground not found.
         In real data, likely that ground mis-identified as point within canopy, therefore value is average middle of canopy as absolute height
 
 
