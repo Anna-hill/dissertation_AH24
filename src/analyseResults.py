@@ -239,7 +239,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             )
 
             plt.savefig(
-                f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}.png"
+                f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}_o{tf_outliers}.png"
             )
             plt.close()
 
@@ -249,7 +249,9 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             )
     # save results to new csv
     resultsDf = pd.DataFrame(results)
-    outCsv = f"data/beam_sensitivity/{las_settings}/{folder}_bs{bs_limit}.csv"
+    outCsv = (
+        f"data/beam_sensitivity/{las_settings}/{folder}_bs{bs_limit}_o{tf_outliers}.csv"
+    )
     resultsDf.to_csv(outCsv, index=False)
     print("Results written to: ", outCsv)
     return outCsv
@@ -328,7 +330,7 @@ def bs_subplots(df):
     # edit legend to only appear once, to the side
     # fig.legend(bbox_to_anchor=(1.05, 0), loc="lower left", borderaxespad=0.0)
 
-    fig.savefig(f"figures/line_plots/{las_settings}.png")
+    fig.savefig(f"figures/line_plots/{las_settings}_bs{bs_limit}_o{tf_outliers}.png")
     print(f"Plot saved to saved to f 'figures/line_plots/{las_settings}.png'")
     plt.clf()
 
@@ -426,7 +428,7 @@ if __name__ == "__main__":
 
         # merge bs results into one file
         df = concat_csv(csv_paths, las_settings)
-        bs_subplots(df)
+        bs_subplots(df, bs_limit, tf_outliers)
         # plot3D(df)
 
     else:
