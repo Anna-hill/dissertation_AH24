@@ -15,7 +15,7 @@ import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
 from shapely.geometry import box
-from unhelpful_files.canopyCover import findCC, read_raster_and_extent
+from canopyCover import findCC, read_raster_and_extent
 from plotting import two_plots
 from xrCanopy import compare_and_xarray
 

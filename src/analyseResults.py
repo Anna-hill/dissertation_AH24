@@ -2,7 +2,6 @@ import time
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import axes3d
 from glob import glob
 import pandas as pd
 import seaborn as sns
@@ -88,10 +87,14 @@ def filePath(folder, las_settings, interpolation):
 def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
     # csv file iterations are named by las_settings
     csv_file = filePath(folder, las_settings, interpolation)
+
+    # new line to read concat csv?
     df = pd.read_csv(csv_file[0], delimiter=",", header=0)
 
     # remove no data rows
     filtered_df = df[df["RMSE"] != -999.0]
+
+    # group by processing settings
     df_p_n = filtered_df.groupby(["nPhotons", "Noise"])
 
     results = {
@@ -110,7 +113,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
         bin_size = 2
         bins = np.arange(0, 101, bin_size)
 
-        # if group < 1, filter out?
+        # bin data by mean canopy cover
         group["CC_bin"] = pd.cut(
             (group["Mean_Canopy_cover"] * 100),
             bins=bins,
@@ -195,8 +198,10 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
 
             # Plot the boxplots using seaborn
             plt.figure()
+
             # Add a horizontal dashed line at rmse=3
             plt.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
+
             # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
@@ -208,17 +213,19 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             )
 
             # Fit a line of best fit to the mean rmse values (make function???)
-            # x = np.arange(len(bin_labels)).reshape(-1, 1)
-            """y = mean_rmse
+            x = np.arange(len(bin_labels)).reshape(-1, 1)
+            y = mean_rmse
 
             # would cubic model fit better?
             # Filter out NaN values
             mask = ~np.isnan(y)
+
+            # fit linear relationship to data
             x_filtered = x[mask].reshape(-1, 1)
             y_filtered = y[mask]
             model = LinearRegression()
             model.fit(x_filtered, y_filtered)
-            y_pred = model.predict(x_filtered)S
+            y_pred = model.predict(x_filtered)
 
             # Plot the line of best fit
             plt.plot(
@@ -226,7 +233,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
                 y_pred,
                 color="b",
                 label="Mean RMSE (Line of Best Fit)",
-            )"""
+            )
 
             # Set x-axis tick labels
             plt.xticks(ticks=np.arange(len(bin_labels)), labels=bin_labels, rotation=90)
@@ -291,7 +298,7 @@ def bs_subplots(df):
         for folder in group["Folder"].unique():
             folder_data = group[group["Folder"] == folder]
 
-            # beter conversion
+            # convert dataframe rows to np arrays
             nPhotons = folder_data["nPhotons"].to_numpy()
             beam_sensitivity = folder_data["beam_sensitivity"].to_numpy()
             ax.plot(
@@ -432,7 +439,6 @@ if __name__ == "__main__":
         # plot3D(df)
 
     else:
-        print(tf_outliers)
         read_csv(site, las_settings, intp_setting, bs_limit, tf_outliers)
 
     # Make rotating 3D plot - saves as gif but very slow

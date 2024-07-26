@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy.ma as ma
 from sklearn.metrics import mean_squared_error, r2_score
 import lasBounds
-from unhelpful_files.canopyCover import (
+from canopyCover import (
     findCC,
     read_raster_and_extent,
     check_intersection,
