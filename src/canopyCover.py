@@ -25,37 +25,7 @@ def plotImage(raster):
     # plt.clf()
 
 
-def findCC(tif):
-    # cc arrays different shape to als arrays. likely to cause issues so taking out summary stats
 
-    tif_open = rasterio.open(tif)
-    tif_read = tif_open.read(1)
-    print(
-        "canopy cover shape: ",
-        tif_read.shape,
-    )
-    # make mask of data points
-    masked_data = ma.masked_where(tif_read == -9999, tif_read)
-    # data_mask = tif_read != -9999
-
-    # filter out no data values
-    # valid_arr = tif_read[data_mask]
-    plotImage(masked_data)
-    # flattening array makes calcuations easier
-    flat_arr = masked_data.flatten()
-
-    mean_CC = np.mean(flat_arr)
-    stdDev_CC = np.std(flat_arr)
-
-    # CC contains no data values (-9999)
-
-    # What i would like this function to do:
-    # find mean CC value
-    # find stDev of canopy cover
-
-    # make a canopy cover image
-    # is it worth having 121 subplot where canopy cover is included against the difference???
-    return mean_CC, stdDev_CC, masked_data
 
 
 def read_raster_and_extent(file_path):
