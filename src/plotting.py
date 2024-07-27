@@ -1,21 +1,10 @@
 """Script to create maps from any input tiff file"""
 
-import time
-import numpy as np
-
-# import rasterio
 from matplotlib import pyplot as plt
-
-# import matplotlib.colors as colors
-# import cartopy.crs as ccrs
-# from canopyCover import read_raster_and_extent
-from lasBounds import removeStrings, findEPSG
-
-# set font?
 
 
 def two_plots(data, data2, outname, title):
-    """Plot 2 datasets on a map as subplots
+    """Plot 2 datasets on subplots, used to quickly check results for each tile
 
     Args:
         data (array): Data set
@@ -67,36 +56,8 @@ def two_plots(data, data2, outname, title):
     plt.close()
 
 
-def two_plots_test(data, data2, title):
-    """Plot 2 datasets on a map as subplots
-
-    Args:
-        data (array): Data set
-        data2 (array): Different data set
-        outname (str): output file name
-    """
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(121)
-    fig1 = ax1.imshow(data, origin="upper", cmap="Spectral", vmin=0, vmax=150)
-    plt.title(title, loc="center")
-    fig.colorbar(
-        fig1,
-        ax=ax1,
-        label="Original",
-        orientation="horizontal",
-        pad=0.1,
-    )
-
-    ax2 = fig.add_subplot(122)
-
-    fig2 = ax2.imshow(data2, origin="upper", cmap="Spectral", vmin=0, vmax=150)
-    fig.colorbar(fig2, ax=ax2, label="Interpolated", orientation="horizontal", pad=0.1)
-    plt.show()
-
-
 def one_plot(data, outname, cmap, caption):
-    """Make a map from a single dataset
+    """Plot a single dataset
 
     Args:
         data (array): Data to plot
@@ -128,8 +89,7 @@ def one_plot(data, outname, cmap, caption):
 
 
 def folder_colour(study_site):
-    # note: change colours - not distinct enough
-    """Retrieves EPSG code for each study site for DTM creation
+    """Returns hexcode to det distinct colour fo reach site
 
     Args:
         study_site (str): study site name
@@ -139,13 +99,13 @@ def folder_colour(study_site):
     """
     colours = {
         "Bonaly": "#003f5c",
-        "hubbard_brook": "#2f4b7c",
-        "la_selva": "#665191",
-        "nouragues": "#a05195",
+        "hubbard_brook": "#339933",
+        "la_selva": "#ffbf00",
+        "nouragues": "#5900b3",
         "oak_ridge": "#d45087",
-        "paracou": "#f95d6a",
-        "robson_creek": "#ff7c43",
-        "wind_river": "#ffa600",
+        "paracou": "#3399ff",
+        "robson_creek": "#cc3300",
+        "wind_river": "#ff8000",
         "test": "#665191",
     }
     if study_site in colours:
@@ -153,11 +113,3 @@ def folder_colour(study_site):
 
     # Unrecognised sites return as black
     return "#000000"
-
-
-if __name__ == "__main__":
-    t = time.perf_counter()
-
-    # Test efficiency
-    t = time.perf_counter() - t
-    print("time taken: ", t, " seconds")

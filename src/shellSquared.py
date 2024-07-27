@@ -58,8 +58,7 @@ if __name__ == "__main__":
 
     if las_setting == "all":
         las_settings = [
-            "600505",
-            "40051",
+            #"40051",
             "50051",
             "60051",
             "400501",
@@ -67,6 +66,7 @@ if __name__ == "__main__":
             "600501",
             "400505",
             "500505",
+            "600505",
         ]
         for setting in las_settings:
             run_dtmShell(study_area, setting)

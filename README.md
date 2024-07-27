@@ -27,8 +27,9 @@ python3 src/testShell.py --studyarea test --noise -1 --pcount 149
 python3 src/dtmShell.py --studyarea all --lassettings 400505
 python3 src/dtmShell.py --studyarea Bonaly
 python3 src/dtmShell.py --studyarea test
-python3 src/dtmShell.py --studyarea hubbard_brook
+python3 src/dtmShell.py --studyarea hubbard_brook --lassettings 400505 --interpolate True
 python3 src/dtmShell.py --studyarea la_selva --lassettings 400505
+python3 src/dtmShell.py --studyarea oak_ridge --lassettings 600501 --interpolate True
 
 
 

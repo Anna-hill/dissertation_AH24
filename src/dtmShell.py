@@ -82,6 +82,7 @@ class DtmCreation(object):
         for idx, sim_file in enumerate(sim_list):
             # Keep original file name
             clip_file = lasBounds.clipNames(sim_file, ".las")
+            print(clip_file)
             print(f"working on {folder} {idx + 1} of {len(sim_list)}")
 
             # find epsg code for study area
@@ -190,22 +191,26 @@ class DtmCreation(object):
         print(f"Tiff written to {outname}")
 
     @staticmethod
-    def calc_metrics(als_array, sim_array):
-        """Assess differences betwen 2 DEMs
+    def calc_metrics(als_array, sim_array, edge_buffer=1):
+        """Assess differences between 2 DEMs, excluding edge points.
 
         Args:
             als_array (array): 1st array
             sim_array (array): 2nd array
+            edge_buffer (int): Width of the edge buffer to exclude (default is 1 pixel).
 
         Returns:
-            rmse, r2, bias, no data count: metrics
+            rmse, r2, bias, data_count, result: metrics and difference array
         """
-        # create valid data mask; so comparison excludes nodata points
-
-        # Is there a better way to mask?
+        # Create a valid data mask; comparison excludes nodata points and edges
         valid_mask = (als_array != -999) & (sim_array != 0)
 
-        # filter out no data values
+        # Exclude edge buffer
+        edge_mask = np.zeros_like(sim_array, dtype=bool)
+        edge_mask[edge_buffer:-edge_buffer, edge_buffer:-edge_buffer] = True
+        valid_mask &= edge_mask
+
+        # Filter out no data values
         valid_als = als_array[valid_mask]
         valid_sim = sim_array[valid_mask]
 
@@ -213,22 +218,22 @@ class DtmCreation(object):
         flat_als = valid_als.flatten()
         flat_sim = valid_sim.flatten()
 
-        # count data pixels
+        # Count data pixels
         data_count = len(flat_als)
 
-        if len(flat_als) == 0 or len(flat_sim) == 0:
+        if data_count == 0:
             raise ValueError("No data points found")
 
-        # find rmse, r2 and bias
+        # Find rmse, r2, and bias
         rmse = np.sqrt(mean_squared_error(flat_als, flat_sim))
         r2 = r2_score(flat_als, flat_sim)
-        bias = np.mean(flat_als - flat_sim)
+        bias = np.mean(flat_sim - flat_als)
 
-        # set up empty array to fill with results
+        # Set up an empty array to fill with results
         result = np.full(als_array.shape, 0, dtype=als_array.dtype)
 
         # Find difference
-        result[valid_mask] = als_array[valid_mask] - sim_array[valid_mask]
+        result[valid_mask] = sim_array[valid_mask] - als_array[valid_mask]
 
         return rmse, r2, bias, data_count, result
 
@@ -250,7 +255,7 @@ class DtmCreation(object):
         return mean_cc, std_cc
 
     def find_nodata(self, ground_elev, canopy_elev):
-        """Justify heavily! funciton finds suitable no data value for empty pixels where ground not found.
+        """Justify heavily! function finds suitable no data value for empty pixels where ground not found.
         In real data, likely that ground mis-identified as point within canopy, therefore value is average middle of canopy as absolute height
 
 
@@ -265,7 +270,7 @@ class DtmCreation(object):
 
         # justify!!!!!!!!!!!!!!!!!!!
         # find middle point of canopy
-        canopy_height = (canopy_elev[valid_mask] - ground_elev[valid_mask]) / 2
+        canopy_height = canopy_elev[valid_mask] - ground_elev[valid_mask]
         ground_mean = np.mean(ground_elev[valid_mask])
         # mean vs median?????
         # returns absolute height?
@@ -377,16 +382,6 @@ class DtmCreation(object):
                 # find nodata value
                 canopy_middle = self.find_nodata(als_read, als_height)
                 try:
-                    """# contains over 100 waves
-                    if np.count_nonzero(simArray) > 100:
-                        # print(clip_match)
-                        # Fill nodata gaps
-                        sim_read, noData = self.fill_nodata(
-                            simArray, interpolation, int_meth, canopy_middle
-                        )
-                    else:
-                        
-                        continue"""
 
                     if (
                         # Check array has correct shape
@@ -394,7 +389,8 @@ class DtmCreation(object):
                         # Check array contains any ground values
                         and np.max(simArray) > 0
                         # Check array contains over 100 waves
-                        and np.count_nonzero(simArray) > 100):
+                        and np.count_nonzero(simArray) > 100
+                    ):
                         sim_read, noData = self.fill_nodata(
                             simArray, interpolation, int_meth, canopy_middle
                         )
@@ -421,7 +417,9 @@ class DtmCreation(object):
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
                     else:
-                        print(f"{clip_match} contains under 100 waves or has mismatched array shapes")
+                        print(
+                            f"{clip_match} contains under 100 waves or has mismatched array shapes"
+                        )
                         (
                             rmse,
                             rSquared,
