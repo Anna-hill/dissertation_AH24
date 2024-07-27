@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     if las_setting == "all":
         las_settings = [
-            "40051",
+            #"40051",
             "50051",
             "60051",
             "400501",

@@ -6,7 +6,7 @@ import pandas as pd
 import argparse
 import rasterio
 from pyproj import Transformer
-from gediHandler import gediData
+from em_testing_code.gediHandler import gediData
 from rasterTools_EM import writeToFile
 
 
