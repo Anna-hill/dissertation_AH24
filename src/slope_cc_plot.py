@@ -70,10 +70,13 @@ def slope_cc(folder):
     flat_slope = slope_padded.flatten()
     flat_diff = diff_padded.flatten()
 
+    # convert all negative vals to pos for abs error
+    flat_diff = np.where(flat_diff < 0, -flat_diff, flat_diff)
+
     return flat_canopy, flat_slope, flat_diff
 
 
-def plot_matrix(sites):
+def plot_matrix(sites, type):
 
     plt.rcParams["font.family"] = "Times New Roman"
     plt.rcParams["figure.constrained_layout.use"] = True
@@ -109,6 +112,8 @@ def plot_matrix(sites):
     for site, ax in zip(sites, axes):
         canopy, slope, diff = slope_cc(site)
 
+        # convert diff values to absolute?
+        # try log transform on CC
         # Perform linear regression
         slope_linreg, intercept, r_value, p_value, std_err = stats.linregress(
             canopy, diff

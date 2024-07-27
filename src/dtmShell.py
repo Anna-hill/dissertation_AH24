@@ -513,14 +513,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            # dtm_creator.createDTM(site, las_settings)
+            dtm_creator.createDTM(site, las_settings)
             dtm_creator.compareDTM(site, interpolation, int_meth, las_settings)
 
     # Run on specified site
     else:
 
         print(f"working on {study_area}")
-        # dtm_creator.createDTM(study_area, las_settings)
+        dtm_creator.createDTM(study_area, las_settings)
         dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)
 
     t = time.perf_counter() - t

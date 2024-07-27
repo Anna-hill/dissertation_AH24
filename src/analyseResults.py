@@ -21,13 +21,6 @@ def analysisCommands():
     p = argparse.ArgumentParser(description=("Script to examine results of dtmShell"))
 
     p.add_argument(
-        "--inFile",
-        dest="inFile",
-        type=str,
-        default="data/results_all_3006.csv",
-        help=("CSV file to analyse"),
-    )
-    p.add_argument(
         "--studyarea",
         dest="studyArea",
         type=str,
@@ -406,7 +399,6 @@ if __name__ == "__main__":
     t = time.perf_counter()
 
     cmdargs = analysisCommands()
-    results_csv = cmdargs.inFile
     site = cmdargs.studyArea
     las_settings = cmdargs.lasSettings
     intp_setting = cmdargs.intpSettings
