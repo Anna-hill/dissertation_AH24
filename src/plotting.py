@@ -107,6 +107,7 @@ def folder_colour(study_site):
         "robson_creek": "#cc3300",
         "wind_river": "#ff8000",
         "test": "#665191",
+        "all": "#C0D6E4",
     }
     if study_site in colours:
         return colours[study_site]

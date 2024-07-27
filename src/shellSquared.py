@@ -3,36 +3,10 @@
 import subprocess
 import time
 import argparse
+from dtmShell import gediCommands
 
 
-def gediCommands():
-    """
-    Read commandline arguments
-    """
-    p = argparse.ArgumentParser(
-        description=("Script to create DTMs and assess accuracy of simulated data")
-    )
-
-    p.add_argument(
-        "--studyarea",
-        dest="studyArea",
-        type=str,
-        default="Bonaly",
-        help=("Study area name, for all sites input 'all'"),
-    )
-
-    p.add_argument(
-        "--lassettings",
-        dest="lasSettings",
-        type=str,
-        default="400505",
-        help=("Choose input based on lastools settings applied to find gound"),
-    )
-    cmdargs = p.parse_args()
-    return cmdargs
-
-
-def run_dtmShell(folder, las_settings):
+def run_dtmShell(folder, las_settings, interpolation, int_meth):
     run_dtm = subprocess.run(
         [
             "python3",
@@ -42,7 +16,9 @@ def run_dtmShell(folder, las_settings):
             "--lassettings",
             f"{las_settings}",
             "--interpolate",
-            "True",
+            f"{interpolation}",
+            "--int_method",
+            f"{int_meth}",
         ],
         check=True,
     )
@@ -55,10 +31,12 @@ if __name__ == "__main__":
     cmdargs = gediCommands()
     study_area = cmdargs.studyArea
     las_setting = cmdargs.lasSettings
+    interpolation = cmdargs.interpolate
+    int_meth = cmdargs.intpMethod
 
     if las_setting == "all":
         las_settings = [
-            #"40051",
+            "40051",
             "50051",
             "60051",
             "400501",
@@ -69,9 +47,9 @@ if __name__ == "__main__":
             "600505",
         ]
         for setting in las_settings:
-            run_dtmShell(study_area, setting)
+            run_dtmShell(study_area, setting, interpolation, int_meth)
     else:
-        run_dtmShell(study_area, las_setting)
+        run_dtmShell(study_area, las_setting, interpolation, int_meth)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

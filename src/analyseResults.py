@@ -1,5 +1,6 @@
 import time
 import argparse
+import itertools
 import numpy as np
 from matplotlib import pyplot as plt
 from glob import glob
@@ -77,12 +78,30 @@ def filePath(folder, las_settings, interpolation):
     return file_list
 
 
-def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
-    # csv file iterations are named by las_settings
-    csv_file = filePath(folder, las_settings, interpolation)
+def set_bs_lims(bs_limit, range_var=1, interval=0.1):
+    bs_limits = np.arange(
+        bs_limit - range_var,
+        bs_limit + range_var + interval,
+        interval,
+    )
+    return bs_limits
 
-    # new line to read concat csv?
-    df = pd.read_csv(csv_file[0], delimiter=",", header=0)
+
+def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_sites):
+
+    if folder == "all":
+        # read all appropriate dataframes and join into 1
+        csv_list = []
+        for site in study_sites:
+            csv_list.append((filePath(site, las_settings, interpolation))[0])
+        dfs = [pd.read_csv(file) for file in csv_list]
+        df = pd.concat(dfs, ignore_index=True)
+
+    else:
+        # csv file iterations are named by las_settings
+        csv_file = filePath(folder, las_settings, interpolation)
+        # new line to read concat csv?
+        df = pd.read_csv(csv_file[0], delimiter=",", header=0)
 
     # remove no data rows
     filtered_df = df[df["RMSE"] != -999.0]
@@ -145,30 +164,23 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
                 upper_quantile = 0.75
                 # Calculate the RMSE value at the upper quantile
                 upper_quantile_threshold = group["RMSE"].quantile(upper_quantile)
+                # print("upper q thresh", upper_quantile_threshold)
+
                 # Filter RMSE values below the upper quantile threshold and above the bs_limit
-                filtered_rmse = group[
-                    (group["RMSE"] > bs_limit)
-                    & (group["RMSE"] <= upper_quantile_threshold)
-                ]
+                filtered_rmse = group[group["RMSE"] <= upper_quantile_threshold]
+                beam_sens = filtered_rmse[filtered_rmse["RMSE"] > bs_limit][
+                    "Mean_Canopy_cover"
+                ].min()
+                # print("filt rmse", filtered_rmse)
                 if np.all(filtered_rmse["RMSE"] <= bs_limit):
                     beam_sens = 1
                 else:
                     # Calculate the minimum Mean_Canopy_cover for the filtered RMSE values
                     beam_sens = filtered_rmse["Mean_Canopy_cover"].min()
+                    print("beam sens", beam_sens)
 
             rmse_mean = np.mean(group["RMSE"])
             bias_mean = np.mean(group["Bias"])
-
-            append_results(
-                results,
-                Folder=folder,
-                las_settings=las_settings,
-                nPhotons=photons,
-                Noise=noise,
-                beam_sensitivity=beam_sens,
-                RMSE=rmse_mean,
-                Bias=bias_mean,
-            )
 
             # set plot settings
             plt.rcParams["font.family"] = "Times New Roman"
@@ -188,6 +200,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             plt.rcParams["axes.titlesize"] = 12
             plt.rcParams["lines.linewidth"] = 1
             plt.rcParams["lines.markersize"] = 4
+            plt.rcParams["legend.frameon"] = False
 
             # Plot the boxplots using seaborn
             plt.figure()
@@ -195,7 +208,8 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             # Add a horizontal dashed line at rmse=3
             plt.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
 
-            # plt.axvline(x=(beam_sens * 100), color="red", linestyle="--", linewidth=1)
+            # print("bs", beam_sens)
+            # plt.axvline(x=beam_sens, color="red", linestyle=":", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
@@ -224,8 +238,17 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             plt.plot(
                 x_filtered,
                 y_pred,
-                color="b",
-                label="Mean RMSE (Line of Best Fit)",
+                color="red",
+                linestyle=":",
+                label="line of best fit for mean RMSE",
+            )
+
+            plt.text(
+                x=1,
+                y=2,
+                s=f"Beam sensitivity: {beam_sens * 100:.2f}%",
+                horizontalalignment="left",
+                verticalalignment="top",
             )
 
             # Set x-axis tick labels
@@ -234,6 +257,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
             # set labels and title
             plt.xlabel("Mean Canopy cover (%)")
             plt.ylabel("RMSE (m)")
+            plt.legend(loc="upper left")
             plt.title(
                 f"{folder}: {photons} photons and {noise} noise with las settings {las_settings}"
             )
@@ -242,6 +266,17 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers):
                 f"figures/box_plots/{folder}/bs{bs_limit}_p{photons}_n{noise}_{las_settings}_o{tf_outliers}.png"
             )
             plt.close()
+
+            append_results(
+                results,
+                Folder=folder,
+                las_settings=las_settings,
+                nPhotons=photons,
+                Noise=noise,
+                beam_sensitivity=beam_sens,
+                RMSE=rmse_mean,
+                Bias=bias_mean,
+            )
 
         else:
             print(
@@ -267,13 +302,13 @@ def concat_csv(csv_list, las_settings):
     # Concatenate all DataFrames into one
     df = pd.concat(dfs, ignore_index=True)
 
-    outCsv = f"{file_path}/summary_stats.csv"
+    outCsv = f"{file_path}/summary_stats_bs{bs_limit}_o{tf_outliers}.csv"
     print(f"file saved to: {outCsv}")
     df.to_csv(outCsv, index=False)
     return df
 
 
-def bs_subplots(df):
+def bs_subplots(df, bs_limit, tf_outliers):
     # filter out old results
     filtered_df = df[df["Noise"] != 5]
     filtered_df = filtered_df[filtered_df["nPhotons"] != 400]
@@ -329,9 +364,9 @@ def bs_subplots(df):
     # plt.subplots_adjust(right=0.85)
     # edit legend to only appear once, to the side
     # fig.legend(bbox_to_anchor=(1.05, 0), loc="lower left", borderaxespad=0.0)
-
-    fig.savefig(f"figures/line_plots/{las_settings}_bs{bs_limit}_o{tf_outliers}.png")
-    print(f"Plot saved to saved to f 'figures/line_plots/{las_settings}.png'")
+    outname = f"figures/line_plots/{las_settings}_bs{bs_limit}_o{tf_outliers}.png"
+    fig.savefig(outname)
+    print(f"Plot saved to saved to {outname}")
     plt.clf()
 
 
@@ -406,35 +441,45 @@ if __name__ == "__main__":
     tf_outliers = cmdargs.bs_outlier
 
     csv_paths = []
+    bs_limit_options = set_bs_lims(bs_limit)
 
     # summary_scatter(3006)
     if site == "all":
         study_sites = [
             "Bonaly",
             "hubbard_brook",
-            "la_selva",
+            # "la_selva",
             "nouragues",
-            "oak_ridge",
+            # "oak_ridge",
             "paracou",
             "robson_creek",
             # "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            csv_paths.append(
-                read_csv(area, las_settings, intp_setting, bs_limit, tf_outliers)
-            )
+            # csv_paths.append(
+            # read_csv(area, las_settings, intp_setting, bs_limit, tf_outliers, study_sites=study_sites)
+            # )
+            continue
 
         # merge bs results into one file
-        df = concat_csv(csv_paths, las_settings)
-        bs_subplots(df, bs_limit, tf_outliers)
+        # df = concat_csv(csv_paths, las_settings)
+        # bs_subplots(df, bs_limit, tf_outliers)
+
         # plot3D(df)
+        read_csv(
+            folder="all",
+            las_settings=las_settings,
+            interpolation=intp_setting,
+            bs_limit=bs_limit,
+            tf_outliers=tf_outliers,
+            study_sites=study_sites,
+        )
 
     else:
-        read_csv(site, las_settings, intp_setting, bs_limit, tf_outliers)
-
-    # Make rotating 3D plot - saves as gif but very slow
-    # set colours and font (rc params?)
+        read_csv(
+            site, las_settings, intp_setting, bs_limit, tf_outliers, study_sites=site
+        )
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

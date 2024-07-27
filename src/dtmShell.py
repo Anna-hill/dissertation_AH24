@@ -398,7 +398,7 @@ class DtmCreation(object):
                             als_read, sim_read
                         )
                         # Save and plot tiff of difference with 0 values hidden
-                        masked_diference = ma.masked_where(difference == 0, difference)
+                        # masked_diference = ma.masked_where(difference == 0, difference)
 
                         diff_outname = (
                             f"data/{folder}/diff_dtm/{las_settings}/{clip_match}.tif"
@@ -410,9 +410,9 @@ class DtmCreation(object):
                             nodata=0,
                         )
 
-                        image_name = f"figures/difference/{folder}/CC{clip_match}.png"
-                        image_title = f"Absolute error for {nPhotons} photons and {noise} noise ({folder})"
-                        two_plots(masked_diference, als_canopy, image_name, image_title)
+                        # image_name = f"figures/difference/{folder}/CC{clip_match}.png"
+                        # image_title = f"Absolute error for {nPhotons} photons and {noise} noise ({folder})"
+                        # two_plots(masked_diference, als_canopy, image_name, image_title)
                         # extract metrics from als arrays
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
@@ -465,7 +465,7 @@ class DtmCreation(object):
                     print(f"{sim_tif} ignored due to error: {e}")
                     continue
 
-        print(
+        """print(
             len(results["Folder"]),
             len(results["File"]),
             len(results["nPhotons"]),
@@ -477,7 +477,7 @@ class DtmCreation(object):
             len(results["Std_dev_Canopy_cover"]),
             len(results["NoData_count"]),
             len(results["Data_count"]),
-        )
+        )"""
 
         resultsDf = pd.DataFrame(results)
         if interpolation == True:
@@ -513,14 +513,14 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            dtm_creator.createDTM(site, las_settings)
+            # dtm_creator.createDTM(site, las_settings)
             dtm_creator.compareDTM(site, interpolation, int_meth, las_settings)
 
     # Run on specified site
     else:
 
         print(f"working on {study_area}")
-        dtm_creator.createDTM(study_area, las_settings)
+        # dtm_creator.createDTM(study_area, las_settings)
         dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)
 
     t = time.perf_counter() - t
