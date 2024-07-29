@@ -53,3 +53,6 @@ python3 src/shellSquared.py --studyarea all --lassettings all
 
 python3 src/analyseResults.py --studyarea la_selva --lassettings 400505 --interpolation _linear
 python3 src/analyseResults.py --studyarea hubbard_brook --lassettings 400505 --interpolation _linear
+
+
+python3 src/slope_cc_plot.py --studyarea all
