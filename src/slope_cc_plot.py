@@ -195,12 +195,6 @@ def plot_matrix(sites, plot_data):
             axis_y = "Absolute elevation error (m)"
             outname = "canopy"
 
-        # If type == 3
-        # return df error (linear) as var y, and error (cubic) as var x
-        # set axis labels
-        # set title
-        # set output file names
-
         else:
             # return df error (linear) as var y, and error (cubic) as var x
             var_x = all_arrays[3]
@@ -211,16 +205,10 @@ def plot_matrix(sites, plot_data):
                 (var_x != 0) & (var_y != 0) & (abs(var_y) <= 50) & (abs(var_x) <= 50)
             )  # Oak ridge has one outlier pixel at 100m error
 
-            # only cc values within given slope range
-            # range_mask = (all_arrays[1] >= 10) & (all_arrays[1] <= 15)
-
-            # Apply the mask to filter the arrays
-            # if site == "oak_ridge":
             var_y = abs(var_y[non_zero_mask])
             var_x = abs(var_x[non_zero_mask])
 
             lims = (min(min(var_x), min(var_y)), max(max(var_x), max(var_y)))
-            # y_lims = (min(var_y), max(var_y))
 
             axis_x = "cubic elevation error (m)"
             axis_y = "Linear elevation error (m)"
@@ -261,76 +249,76 @@ def plot_matrix(sites, plot_data):
     plt.savefig(f"figures/{outname}_regress.png")
     plt.clf()
 
-    ##########
-
     # save results to new csv
     resultsDf = pd.DataFrame(results)
     outCsv = f"data/{outname}_regress.csv"
     resultsDf.to_csv(outCsv, index=False)
     print("Results written to: ", outCsv)
 
+    return all_arrays
+
     ###########
 
-    """def plot3D(df):
 
-        # set plot settings
-        plt.rcParams["font.family"] = "Times New Roman"
-        plt.rcParams["figure.constrained_layout.use"] = True
-        plt.rcParams["figure.figsize"] = (8, 6)
-        plt.rcParams["legend.fontsize"] = 10
-        plt.rcParams["legend.frameon"] = False
-        plt.rcParams["xtick.labelsize"] = 10
-        plt.rcParams["xtick.major.size"] = 2
-        plt.rcParams["xtick.major.width"] = 0.4
-        plt.rcParams["xtick.major.pad"] = 2
-        plt.rcParams["ytick.labelsize"] = 10
-        plt.rcParams["ytick.major.size"] = 2
-        plt.rcParams["ytick.major.width"] = 0.4
-        plt.rcParams["ytick.major.pad"] = 2
-        plt.rcParams["axes.labelsize"] = 12
-        plt.rcParams["axes.linewidth"] = 0.5
-        plt.rcParams["axes.labelpad"] = 3
-        plt.rcParams["axes.titlesize"] = 14
-        plt.rcParams["lines.linewidth"] = 1
-        plt.rcParams["lines.markersize"] = 4
+def plot3D(merged_array, site):
 
-        fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
+    # set plot settings
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.rcParams["figure.constrained_layout.use"] = True
+    plt.rcParams["figure.figsize"] = (8, 6)
+    plt.rcParams["xtick.labelsize"] = 10
+    plt.rcParams["xtick.major.size"] = 2
+    plt.rcParams["xtick.major.width"] = 0.4
+    plt.rcParams["xtick.major.pad"] = 2
+    plt.rcParams["ytick.labelsize"] = 10
+    plt.rcParams["ytick.major.size"] = 2
+    plt.rcParams["ytick.major.width"] = 0.4
+    plt.rcParams["ytick.major.pad"] = 2
+    plt.rcParams["axes.labelsize"] = 12
+    plt.rcParams["axes.linewidth"] = 0.5
+    plt.rcParams["axes.labelpad"] = 3
+    plt.rcParams["axes.titlesize"] = 14
+    plt.rcParams["lines.linewidth"] = 1
+    plt.rcParams["lines.markersize"] = 4
 
-        for site in df["Folder"].unique():
-            site_group = df[df["Folder"] == site]
-            X = site_group["nPhotons"]
-            Y = site_group["Noise"]
-            Z = site_group["beam_sensitivity"]
-            scat = ax.scatter(X, Y, Z, color=folder_colour(site), label=site)
-        ax.set_xlabel("Photons")
-        ax.set_ylabel("Noise")
-        ax.set_zlabel("Beam Sensitivity")
-        ax.legend(loc="upper left")
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
 
-        plt.title(f"Beam Sensitivity for {las_settings} las settings")
+    X = merged_array[0] * 100  # canopy
+    Y = merged_array[1]  # slope
+    Z = abs(merged_array[2])  # error
+    scat = ax.scatter(X, Y, Z, c=Z, cmap="viridis", alpha=0.4)
 
-        # create static image
-        fig.savefig(f"figures/scatter_plots/{las_settings}.png")
+    # Add a color bar to indicate the scale of Z values
+    color_bar = plt.colorbar(scat, ax=ax, pad=0.1)
+    color_bar.set_label("Absolute elevation error (m)")
 
-        # Function to update the view angle
-        def update(frame):
-            ax.view_init(elev=30, azim=frame)
-            return (scat,)
+    ax.set_xlabel("Canopy cover (%)")
+    ax.set_ylabel("Slope (°)")
+    ax.set_zlabel("Absolute elevation error (m)")
 
-        # Create an animation
-        ani = FuncAnimation(
-            fig, update, frames=np.arange(0, 360, 1), interval=50, blit=True
-        )
+    plt.title(f"{site}")
 
-        # Save the animation as a GIF
-        ani.save(
-            f"figures/scatter_plots/rotating_{las_settings}.gif", writer="imagemagick"
-        )
-        print(f"Gif saved to f 'figures/scatter_plots/rotating_{las_settings}.gif'")
+    # create static image
+    fig.savefig(f"figures/scatter_plots/{site}_error_controls.png")
 
-        # close figure
-        fig.close()"""
+    # Function to update the view angle
+    def update(frame):
+        ax.view_init(elev=30, azim=frame)
+        return (scat,)
+
+    # Create an animation
+    ani = FuncAnimation(
+        fig, update, frames=np.arange(0, 360, 1), interval=50, blit=True
+    )
+
+    # Save the animation as a GIF
+    outname = f"figures/scatter_plots/rotating_{site}.gif"
+    ani.save(outname, writer="imagemagick")
+    print(f"Gif saved to {outname}")
+
+    # close figure
+    fig.close()
 
 
 if __name__ == "__main__":
@@ -355,10 +343,15 @@ if __name__ == "__main__":
             "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
-        plot_matrix(study_sites, plot_type)
+        # plot_matrix(study_sites, plot_type)
+        for site_x in study_sites:
+            results_array = slope_cc(site)
+            plot3D(results_array, site)
 
     else:
-        plot_matrix([site], plot_type)
+        # results_array = plot_matrix([site], plot_type)
+        results_array = slope_cc(site)
+        plot3D(results_array, site)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")
