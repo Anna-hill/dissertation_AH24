@@ -180,7 +180,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
                     print("beam sens", beam_sens)
 
             rmse_mean = np.mean(group["RMSE"])
-            bias_mean = np.mean(group["Bias"])
+            bias_mean = np.mean(abs(group["Bias"]))
 
             # set plot settings
             plt.rcParams["font.family"] = "Times New Roman"
