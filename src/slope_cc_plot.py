@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from glob import glob
 import pandas as pd
 from scipy import stats, optimize
+import mpl_scatter_density
+from scipy.stats import gaussian_kde
 from matplotlib.animation import FuncAnimation
 from lasBounds import append_results
 from plotting import folder_colour
@@ -19,7 +21,7 @@ def find_merged(folder):
     slope_list = glob(file_path + f"/*slope.tif")
     diff_l_list = glob(file_path + f"/*diff_linear.tif")
     diff_c_list = glob(file_path + f"/*diff_cubic.tif")
-    print(canopy_list, slope_list, diff_l_list, diff_c_list)
+    print("reading files :", canopy_list, slope_list, diff_l_list, diff_c_list)
     return canopy_list[0], slope_list[0], diff_l_list[0], diff_c_list[0]
 
 
@@ -134,10 +136,7 @@ def plot_matrix(sites, plot_data):
 
     subplot_len = int(len(sites) / 2)
 
-    fig, axes = plt.subplots(
-        subplot_len,
-        2,
-    )
+    fig, axes = plt.subplots(subplot_len, 2)
     axes = axes.flatten()
 
     for site, ax in zip(sites, axes):
@@ -165,6 +164,7 @@ def plot_matrix(sites, plot_data):
             # Apply the mask to filter the arrays
             var_x = var_x[combined_mask]
             var_y = var_y[combined_mask]
+            bs_limit = 4
 
             axis_x = "Slope (°)"
             axis_y = "Absolute elevation error (m)"
@@ -190,6 +190,7 @@ def plot_matrix(sites, plot_data):
             var_x = var_x[combined_mask]
             var_x = var_x * 100
             var_y = var_y[combined_mask]
+            bs_limit = 4
 
             axis_x = "Canopy Cover (%)"
             axis_y = "Absolute elevation error (m)"
@@ -199,6 +200,8 @@ def plot_matrix(sites, plot_data):
             # return df error (linear) as var y, and error (cubic) as var x
             var_x = all_arrays[3]
             var_y = all_arrays[2]
+
+            bs_limit = 0
 
             # filter out 0 values
             non_zero_mask = (
@@ -232,8 +235,22 @@ def plot_matrix(sites, plot_data):
             slope=slope_linreg,
         )
 
+        # point density solution from https://stackoverflow.com/questions/20105364/how-can-i-make-a-scatter-plot-colored-by-density
+        # Calculate the point density
+        xy = np.vstack([var_x, var_y])
+        z = gaussian_kde(xy)(xy)
+
+        # Sort the points by density, so that the densest points are plotted last
+        idx = z.argsort()
+        x, y, z = var_x[idx], var_y[idx], z[idx]
+
+        # ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
+        # density = ax.scatter_density(var_x, var_y, cmap="viridis")
+        # fig.colorbar(density, label="Number of points per pixel")
+
         # Plot the data
-        ax.scatter(var_x, var_y, alpha=0.2, color=folder_colour(site))
+        ax.scatter(x, y, c=z, s=5)
+        ax.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
 
         # Add title and labels
         ax.set_title(f"{site} (R²={r_value**2:.2f}, p={p_value:.2e})")
@@ -317,9 +334,6 @@ def plot3D(merged_array, site):
     ani.save(outname, writer="imagemagick")
     print(f"Gif saved to {outname}")
 
-    # close figure
-    fig.close()
-
 
 if __name__ == "__main__":
     t = time.perf_counter()
@@ -333,25 +347,25 @@ if __name__ == "__main__":
 
     if site == "all":
         study_sites = [
-            "Bonaly",
+            # "Bonaly",
             "hubbard_brook",
             "la_selva",
             "nouragues",
             "oak_ridge",
             "paracou",
             "robson_creek",
-            "wind_river",
+            # "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
-        # plot_matrix(study_sites, plot_type)
+        plot_matrix(study_sites, plot_type)
         for site_x in study_sites:
-            results_array = slope_cc(site)
-            plot3D(results_array, site)
+            results_array = slope_cc(site_x)
+            # plot3D(results_array, site_x)
 
     else:
-        # results_array = plot_matrix([site], plot_type)
+        results_array = plot_matrix([site], plot_type)
         results_array = slope_cc(site)
-        plot3D(results_array, site)
+        # plot3D(results_array, site)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

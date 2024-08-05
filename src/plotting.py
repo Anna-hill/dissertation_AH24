@@ -3,7 +3,7 @@
 from matplotlib import pyplot as plt
 
 
-def two_plots(data, data2, outname, title):
+def two_plots(data, data2, outname, title, folder):
     """Plot 2 datasets on subplots, used to quickly check results for each tile
 
     Args:
@@ -32,11 +32,7 @@ def two_plots(data, data2, outname, title):
     fig = plt.figure()
     fig.suptitle(title, fontsize="large")
     ax1 = fig.add_subplot(121)
-    fig1 = ax1.imshow(
-        data,
-        origin="upper",
-        cmap="Spectral",
-    )
+    fig1 = ax1.imshow(data, origin="upper", cmap="Spectral")
 
     fig.colorbar(
         fig1,
@@ -48,7 +44,14 @@ def two_plots(data, data2, outname, title):
 
     ax2 = fig.add_subplot(122)
 
-    fig2 = ax2.imshow(data2, origin="upper", cmap="Greens", vmin=0, vmax=1)
+    fig2 = ax2.imshow(
+        data2,
+        origin="upper",
+        cmap="Greens",
+        vmin=0,
+        vmax=1,
+    )
+
     fig.colorbar(
         fig2, ax=ax2, label="Canopy Cover (%)", orientation="horizontal", pad=0.1
     )

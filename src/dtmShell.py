@@ -130,25 +130,18 @@ class DtmCreation(object):
         als_ground = metric_functions(
             coordinates,
             ground_values,
-            cmap="Spectral",
-            caption="Elevation (m)",
             outname=f"{outname}_ground",
             epsg=epsg,
         )
         als_canopy = metric_functions(
             coordinates,
             canopy_values,
-            cmap="Greens",
-            caption="Canopy cover (%)",
             outname=f"{outname}_canopy",
             epsg=epsg,
         )
         als_slope = metric_functions(
             coordinates,
             slope_values,
-            cmap="Blues",
-            # check this
-            caption="Slope (%) or angle",
             outname=f"{outname}_slope",
             epsg=epsg,
         )
@@ -255,26 +248,24 @@ class DtmCreation(object):
         return mean_cc, std_cc
 
     def find_nodata(self, ground_elev, canopy_elev):
-        """Justify heavily! function finds suitable no data value for empty pixels where ground not found.
+        """function finds suitable no data value for empty pixels where ground not found.
         In real data, likely that ground mis-identified as point within canopy, therefore value is average middle of canopy as absolute height
 
 
         Args:
-            ground_elev (_type_): _description_
-            canopy_elev (_type_): _description_
+            ground_elev (array): sim ground array
+            canopy_elev (array: canopy top height array from ALS
 
         Returns:
-            _type_: _description_
+            float: value to be used as no-data for each tile
         """
         valid_mask = (ground_elev > 0) & (canopy_elev > 0)
 
-        # justify!!!!!!!!!!!!!!!!!!!
         # find middle point of canopy
         canopy_height = canopy_elev[valid_mask] - ground_elev[valid_mask]
         ground_mean = np.mean(ground_elev[valid_mask])
-        # mean vs median?????
-        # returns absolute height?
-        no_data_val = np.median(canopy_height) + ground_mean
+
+        no_data_val = (np.median(canopy_height) + ground_mean) / 2
         return no_data_val
 
     def fill_nodata(self, array, interpolation, int_meth, no_data):
@@ -398,7 +389,7 @@ class DtmCreation(object):
                             als_read, sim_read
                         )
                         # Save and plot tiff of difference with 0 values hidden
-                        # masked_diference = ma.masked_where(difference == 0, difference)
+                        masked_diference = ma.masked_where(difference == 0, difference)
 
                         diff_outname = (
                             f"data/{folder}/diff_dtm/{las_settings}/{clip_match}.tif"
@@ -410,9 +401,15 @@ class DtmCreation(object):
                             nodata=0,
                         )
 
-                        # image_name = f"figures/difference/{folder}/CC{clip_match}.png"
-                        # image_title = f"Absolute error for {nPhotons} photons and {noise} noise ({folder})"
-                        # two_plots(masked_diference, als_canopy, image_name, image_title)
+                        image_name = f"figures/difference/{folder}/CC{clip_match}.png"
+                        image_title = f"Absolute error for {nPhotons} photons and {noise} noise ({folder})"
+                        two_plots(
+                            masked_diference,
+                            als_canopy,
+                            image_name,
+                            image_title,
+                            folder,
+                        )
                         # extract metrics from als arrays
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
                         mean_slope, stdDev_slope = self.canopy_cover_stats(als_slope)
@@ -518,7 +515,6 @@ if __name__ == "__main__":
 
     # Run on specified site
     else:
-
         print(f"working on {study_area}")
         # dtm_creator.createDTM(study_area, las_settings)
         dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)

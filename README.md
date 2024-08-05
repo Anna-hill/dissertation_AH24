@@ -27,9 +27,10 @@ python3 src/testShell.py --studyarea test --noise -1 --pcount 149
 python3 src/dtmShell.py --studyarea all --lassettings 400505
 python3 src/dtmShell.py --studyarea Bonaly
 python3 src/dtmShell.py --studyarea test
-python3 src/dtmShell.py --studyarea hubbard_brook --lassettings 400505 --interpolate True
+python3 src/dtmShell.py --studyarea hubbard_brook --lassettings 40051 --interpolate True
 python3 src/dtmShell.py --studyarea la_selva --lassettings 400505
 python3 src/dtmShell.py --studyarea oak_ridge --lassettings 600501 --interpolate True
+python3 src/dtmShell.py --studyarea wind_river --lassettings 40051 --interpolate True --int_method cubic
 
 
 
@@ -59,3 +60,10 @@ python3 src/slope_cc_plot.py --studyarea all
 
 
 python3 src/analyseResults.py --studyarea all --lassettings 40051 --interpolation _cubic
+
+
+## GLS_planner.py
+
+- Accompanies Hancock et al. (2021)
+
+>> python3 glsPlanner.py --photDet 149
