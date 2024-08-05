@@ -169,17 +169,12 @@ def runMetric(folder, noise, photons):
     noise_levels = [
         0,
         4,
-        # 5.3,
         8,
         15,
         104,
         149,
-        # 200,
-        # 300,
-        # 400,
-        # 500,
     ]
-    photon_count = [149, 300, 500]
+    photon_count = [149, 300, 500, 1000]
 
     # 4 different options to allow different combinations of variation for gediMetric command
     # All noises all photons options
@@ -235,22 +230,22 @@ if __name__ == "__main__":
             "hubbard_brook",
             "la_selva",
             "nouragues",
-            # "oak_ridge",
+            "oak_ridge",
             "paracou",
             "robson_creek",
-            # "wind_river",
+            "wind_river",
         ]
         print(f"working on all sites {study_sites}")
         for site in study_sites:
-            # runGRat(site)
-            # metricText(site) # do not overwrite while als -raw removed
+            runGRat(site)
+            metricText(site)
             runMetric(site, set_noise, set_pCount)
 
     # Only process given site
     else:
         print(f"working on {study_area}")
-        # runGRat(study_area)
-        # metricText(study_area)
+        runGRat(study_area)
+        metricText(study_area)
         runMetric(study_area, set_noise, set_pCount)
 
     # Test efficiency

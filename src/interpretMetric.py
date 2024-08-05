@@ -104,60 +104,11 @@ def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
         dst.write(raster_data, 1)
 
 
-def metric_functions(coords, data, cmap, caption, outname, epsg):
+def metric_functions(coords, data, outname, epsg):
     """come back later to tidy this one up"""
 
     # make als ground tiff
     raster_data, bounds = create_geo_array(coords, data)
-    # create_tiff(raster_data, bounds, epsg, outname)  # removed for efficiency
-
-    # mask no data and visualise
-    # open = rasterio.open(output_path)
-    # read = open.read(1)
-
-    # masked = ma.masked_where(raster_data == -999, raster_data)
-
-    # one_plot(masked, outname, cmap, caption)  # removed for efficiency
+    create_tiff(raster_data, bounds, epsg, outname)
 
     return raster_data
-
-
-if __name__ == "__main__":
-
-    # for file in pts metric that ends in txt
-    file_path = "data/la_selva/pts_metric/823374_1155000.metric.txt"
-    output_als_path = "data/test/output_laselva_als.tif"
-    output_canopy_path = "data/test/output_laselva_canopy.tif"
-    output_slope_path = "data/test/output_laselva_slope.tif"
-
-    coords, ground_values, canopy_values, slope_values = read_text_file(file_path)
-
-    # make als ground tiff
-    raster_data, bounds = create_geo_array(coords, ground_values)
-    create_tiff(raster_data, bounds, output_als_path)
-
-    # mask no data and visualise
-    topen = rasterio.open(output_als_path)
-    tread = topen.read(1)
-    masked = ma.masked_where(tread == -1000000.0, tread)
-    one_plot(masked, output_als_path, cmap="Spectral", caption="Elevation (m)")
-
-    # make als canopy tiff
-    canopy_data, bounds = create_geo_array(coords, canopy_values)
-    create_tiff(canopy_data, bounds, output_canopy_path)
-
-    # mask no data and visualise
-    topen = rasterio.open(output_canopy_path)
-    tread = topen.read(1)
-    masked = ma.masked_where(tread == -1000000.0, tread)
-    one_plot(masked, output_canopy_path, cmap="Greens", caption="Canopy cover (%)")
-
-    # make slope tiff
-    slope_data, bounds = create_geo_array(coords, slope_values)
-    create_tiff(slope_data, bounds, output_slope_path)
-
-    # mask no data and visualise
-    topen = rasterio.open(output_slope_path)
-    tread = topen.read(1)
-    masked = ma.masked_where(tread == -1000000.0, tread)
-    one_plot(masked, output_slope_path, cmap="Blues", caption="Slope (%) or angle")
