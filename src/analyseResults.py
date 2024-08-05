@@ -11,9 +11,6 @@ from lasBounds import append_results
 from plotting import folder_colour
 from matplotlib.animation import FuncAnimation
 
-# more plots
-# remove bins from plot where less than a number- justifyyyy???
-
 
 def analysisCommands():
     """
@@ -116,10 +113,15 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
         "Noise": [],
         "RMSE": [],
         "Bias": [],
+        "Pixel_count": [],
+        "nodata_count": [],
+        "nodata_prop": [],
         "beam_sensitivity": [],
     }
 
     for (photons, noise), group in df_p_n:
+        sum_pixels = sum(group["Data_count"])
+        sum_nodata = sum(group["NoData_count"])
 
         # Bin values by mean cc (as percentage)
         bin_size = 2
@@ -276,6 +278,9 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
                 beam_sensitivity=beam_sens,
                 RMSE=rmse_mean,
                 Bias=bias_mean,
+                Pixel_count=sum_pixels,
+                nodata_count=sum_nodata,
+                nodata_prop=prop_nodata,
             )
 
         else:
@@ -448,25 +453,31 @@ if __name__ == "__main__":
         study_sites = [
             "Bonaly",
             "hubbard_brook",
-            # "la_selva",
+            "la_selva",
             "nouragues",
-            # "oak_ridge",
+            "oak_ridge",
             "paracou",
             "robson_creek",
-            # "wind_river",
+            "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         for area in study_sites:
-            # csv_paths.append(
-            # read_csv(area, las_settings, intp_setting, bs_limit, tf_outliers, study_sites=study_sites)
-            # )
-            continue
+            csv_paths.append(
+                read_csv(
+                    area,
+                    las_settings,
+                    intp_setting,
+                    bs_limit,
+                    tf_outliers,
+                    study_sites=study_sites,
+                )
+            )
 
         # merge bs results into one file
-        # df = concat_csv(csv_paths, las_settings)
-        # bs_subplots(df, bs_limit, tf_outliers)
+        df = concat_csv(csv_paths, las_settings)
+        bs_subplots(df, bs_limit, tf_outliers)
 
-        # plot3D(df)
+        # all sites on one plot
         read_csv(
             folder="all",
             las_settings=las_settings,

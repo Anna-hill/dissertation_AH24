@@ -56,3 +56,6 @@ python3 src/analyseResults.py --studyarea hubbard_brook --lassettings 400505 --i
 
 
 python3 src/slope_cc_plot.py --studyarea all
+
+
+python3 src/analyseResults.py --studyarea all --lassettings 40051 --interpolation _cubic
