@@ -19,7 +19,7 @@ A complete description of the command line arguments and processing rationale is
 - Uses the GEDI simulator (Hancock et al., 2019) to generate simulated photon-counting Lidar from discrete-return Airborne Lidar
 - Records information from the Airborne data for later comparision
 
-can be run with:
+Can be run with:
 
 > python3 src/testShell.py --studyarea all --noise -1 --pcount -1
 
@@ -28,7 +28,7 @@ can be run with:
 - Uses mapLidar from the GEDI simulator to generate DTMs from ground-classified simulated waveforms
 - Compares accuracy of ground finding against Airborne information
 
-can be run with:
+Can be run with:
 
 > python3 src/dtmShell.py --studyarea all --lassettings 40051 --interpolate True --int_method linear
 
@@ -43,16 +43,16 @@ can be run with:
 - Converts accuracy assessment of simulated DTMs into beam sensitivty metrics
 - Generates plots for comparison of results
 
-can be run with:
+Can be run with:
 
 > python3 src/analyseResults.py --studyarea hubbard_brook --lassettings 40051 --interpolation _linear --bs_thresh 4
 
 ## slope_cc_plot.py
 
 - Reads merged geotiff files of results and compares the relationships between them
-- makes scatter plot matrices of slope, canopy cover, linear interpolated elevation accuracy or cubic interpolated elevation accuracy
+- Makes scatter plot matrices of slope, canopy cover, linear interpolated elevation accuracy or cubic interpolated elevation accuracy
 
-can be run with:
+Can be run with:
 
 > python3 src/slope_cc_plot.py --studyarea all –plottype 1
 
@@ -65,5 +65,5 @@ can be run with:
 
 # bat
 
-- contains the lastools batch processing scripts
-- the commands within these are described in more detail in the Technical report
+- Contains the lastools batch processing scripts
+- The commands within these are described in more detail in the Technical report
