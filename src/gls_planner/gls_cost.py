@@ -22,7 +22,7 @@ def readCommands():
 
 
 def sat_cost(count):
-    # Total estimated cost for a year's operations in
+    """Total estimated cost for a year's operations in USD"""
     platform_cost = 10000 * count
     launch_cost = 1350 * count
     optics_cost = 844 * count

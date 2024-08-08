@@ -58,7 +58,10 @@ can be run with:
 
 ## Additional scripts:
 
-**interpretMetric.py**,**plotting.py** and **lasBounds.py** are supporting scripts which cannot be run directly
+- **interpretMetric.py**,**plotting.py** and **lasBounds.py** are supporting scripts which cannot be run directly
+- **gls_cost.py** performs a simple calculation of how much a global satellite lidar system would cost, based on the number of satellites:
+
+> python3 gls_cost.py --sat_count 3
 
 # bat
 
