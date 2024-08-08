@@ -4,8 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from glob import glob
 import pandas as pd
-from scipy import stats, optimize
-import mpl_scatter_density
+from scipy import stats
 from scipy.stats import gaussian_kde
 from matplotlib.animation import FuncAnimation
 from lasBounds import append_results
@@ -14,8 +13,15 @@ from analyseResults import analysisCommands
 
 
 def find_merged(folder):
+    """FInd merged rasters
+
+    Args:
+        folder (str): study site
+
+    Returns:
+        str: raster file names
+    """
     file_path = f"data/{folder}/merged_rasters"
-    # data/Bonaly/merged_rasters/b_p149_n15_diff_linear.tif
 
     canopy_list = glob(file_path + f"/*canopy.tif")
     slope_list = glob(file_path + f"/*slope.tif")
@@ -26,14 +32,14 @@ def find_merged(folder):
 
 
 def open_raster(tif):
-    # open tif files as arrays and flatten
+    """open tif files as arrays and flatten"""
     open_tif = rasterio.open(tif)
     read_tif = open_tif.read(1)
     return read_tif
 
 
 def pad_array(arr, target_shape):
-    # make sure all arrays same size
+    """make sure all arrays same size"""
     padded_arr = np.zeros(target_shape)
     padded_arr[: arr.shape[0], : arr.shape[1]] = arr
     return padded_arr
@@ -71,44 +77,28 @@ def slope_cc(folder):
     diff_l_padded = pad_array(read_l_diff, max_shape)
     diff_c_padded = pad_array(read_c_diff, max_shape)
 
-    # remove 0 values and ensure same raster dims
-    """combined_mask = (canopy_padded > 0) and (slope_padded > 0) and (diff_padded != 0)
-    masked_canopy = np.where(combined_mask, canopy_padded, np.nan)
-    masked_slope = np.where(combined_mask, slope_padded, np.nan)
-    masked_diff = np.where(combined_mask, diff_padded, np.nan)"""
-
-    # print(masked_canopy.shape, masked_slope.shape, masked_diff.shape)
-
     # flatten arrays for stats
     flat_canopy = canopy_padded.flatten()
     flat_slope = slope_padded.flatten()
     flat_l_diff = diff_l_padded.flatten()
     flat_c_diff = diff_c_padded.flatten()
 
-    # convert all negative vals to pos for abs error
-    # flat_diff = np.where(flat_diff < 0, -flat_diff, flat_diff)
-
-    # append arrays into df
-    """merged_rasters = {
-        "canopy": [],
-        "slope": [],
-        "linear_difference": [],
-        "cubic_difference": [],
-    }
-    append_results(
-        merged_rasters,
-        canopy=flat_canopy,
-        slope=flat_slope,
-        linear_difference=flat_l_diff,
-        cubic_difference=flat_c_diff,
-    )
-    merged_rasters_df = pd.DataFrame(merged_rasters)"""
+    # join flat arrays into 2d array
     all_arrays = np.vstack([flat_canopy, flat_slope, flat_l_diff, flat_c_diff])
 
     return all_arrays
 
 
 def plot_matrix(sites, plot_data):
+    """Create scatter plot matrix for 2 variables of interest
+
+    Args:
+        sites (list): study sites
+        plot_data (int): controls which variables in plots
+
+    Returns:
+        2d array: all merged rasters in 2d array
+    """
 
     plt.rcParams["font.family"] = "Times New Roman"
     plt.rcParams["figure.constrained_layout.use"] = True
@@ -217,10 +207,6 @@ def plot_matrix(sites, plot_data):
             axis_y = "Linear elevation error (m)"
             outname = "interpolation"
 
-        # Descriptive statistics?
-        # print(stats.describe(var_x))
-        # print(stats.describe(var_y))
-
         slope_linreg, intercept, r_value, p_value, std_err = stats.linregress(
             var_x,
             var_y,
@@ -235,7 +221,6 @@ def plot_matrix(sites, plot_data):
             slope=slope_linreg,
         )
 
-        # point density solution from https://stackoverflow.com/questions/20105364/how-can-i-make-a-scatter-plot-colored-by-density
         # Calculate the point density
         xy = np.vstack([var_x, var_y])
         z = gaussian_kde(xy)(xy)
@@ -243,10 +228,6 @@ def plot_matrix(sites, plot_data):
         # Sort the points by density, so that the densest points are plotted last
         idx = z.argsort()
         x, y, z = var_x[idx], var_y[idx], z[idx]
-
-        # ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
-        # density = ax.scatter_density(var_x, var_y, cmap="viridis")
-        # fig.colorbar(density, label="Number of points per pixel")
 
         # Plot the data
         ax.scatter(x, y, c=z, s=5)
@@ -258,8 +239,8 @@ def plot_matrix(sites, plot_data):
         ax.set_ylabel(axis_y)
         if plot_data == 3:
             # ensure diff interpolation models have same x y lims
-            ax.set_ylim(lims)  #
-            ax.set_xlim(lims)  #
+            ax.set_ylim(lims)
+            ax.set_xlim(lims)
 
     # Adjust layout and show plot
     plt.tight_layout()
@@ -278,6 +259,13 @@ def plot_matrix(sites, plot_data):
 
 
 def plot3D(merged_array, site):
+    """Make 3D plot of slope, canopy and elevation difference
+
+    Args:
+        merged_array (2d array): input data
+        site (str): study site
+
+    """
 
     # set plot settings
     plt.rcParams["font.family"] = "Times New Roman"
@@ -347,25 +335,25 @@ if __name__ == "__main__":
 
     if site == "all":
         study_sites = [
-            # "Bonaly",
+            "Bonaly",
             "hubbard_brook",
             "la_selva",
             "nouragues",
             "oak_ridge",
             "paracou",
             "robson_creek",
-            # "wind_river",
+            "wind_river",
         ]
         print(f"working on all sites ({study_sites})")
         plot_matrix(study_sites, plot_type)
         for site_x in study_sites:
             results_array = slope_cc(site_x)
-            # plot3D(results_array, site_x)
+            plot3D(results_array, site_x)
 
     else:
         results_array = plot_matrix([site], plot_type)
         results_array = slope_cc(site)
-        # plot3D(results_array, site)
+        plot3D(results_array, site)
 
     t = time.perf_counter() - t
     print("time taken: ", t, " seconds")

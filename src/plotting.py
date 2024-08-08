@@ -1,9 +1,9 @@
-"""Script to create maps from any input tiff file"""
+"""Functions to support data visualisation"""
 
 from matplotlib import pyplot as plt
 
 
-def two_plots(data, data2, outname, title, folder):
+def two_plots(data, data2, outname, title):
     """Plot 2 datasets on subplots, used to quickly check results for each tile
 
     Args:

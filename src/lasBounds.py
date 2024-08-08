@@ -1,13 +1,18 @@
-# example adapted from https://laspy.readthedocs.io/en/latest/complete_tutorial.html
-
+"""Functions to extract las file cooordinates and file name information"""
 
 import laspy
 import regex
-from glob import glob
-import numpy as np
 
 
 def lasMBR(file):
+    """Find minimum bounding rectangle of las file
+
+    Args:
+        file (str): las fiel path
+
+    Returns:
+        list: bounds
+    """
     MBR = []
     las = laspy.read(file)
 
@@ -21,6 +26,7 @@ def lasMBR(file):
 
 
 def removeStrings(str_int):
+    """Remove letters from mixed string"""
 
     match = regex.findall(r"\d+", str_int)
     return match[0] if match else None
@@ -53,23 +59,18 @@ def findEPSG(study_site):
 
 
 def clipNames(name, suffix):
+    """Removes full file path and extension to shorten file name
+
+    Args:
+        name (str): file path
+        suffix (str): file extension
+
+    Returns:
+        str: clipped name
+    """
     file = name.split("/")[-1]
     clipped = file.rstrip(suffix)
     return clipped
-
-
-def interpretName(file_list):
-    rNPhotons = r"[p]+\d+"
-    rNoise = r"[n]+\d+"
-    noise_list = set()
-    nPhotons_list = set()
-    for file in file_list:
-        nPhoton = regex.findall(pattern=rNPhotons, string=file)[0]
-        noise = regex.findall(pattern=rNoise, string=file)[0]
-
-        nPhotons_list.add(nPhoton)
-        noise_list.add(noise)
-    return noise_list, nPhotons_list
 
 
 def append_results(results, **kwargs):
@@ -83,6 +84,15 @@ def append_results(results, **kwargs):
 
 
 def match_files(als_files, sim_files):
+    """Match ALS and sim files based on bounds in file name
+
+    Args:
+        als_files (list): als files
+        sim_files (list): sim files
+
+    Returns:
+        dict: als files: sim files
+    """
     # Dictionary to store matched files
     matches = {}
 

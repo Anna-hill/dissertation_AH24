@@ -42,17 +42,6 @@ def gediCommands():
     return cmdargs
 
 
-# Do i need this????
-def filePath(folder):
-    """Function to test file paths and glob"""
-
-    filePath = f"data/{folder}/raw_las"
-
-    file_list = glob(filePath + "/*.las")
-
-    return file_list
-
-
 def runGRat(folder):
     """Function to run gediRat (waveform simulation) on las files in a folder
 

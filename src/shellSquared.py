@@ -1,12 +1,19 @@
-"""Script to run dtmShell with differnt las options. Use with caution - takes about 6 hours to run"""
+"""Script to run dtmShell with differnt las options"""
 
 import subprocess
 import time
-import argparse
 from dtmShell import gediCommands
 
 
 def run_dtmShell(folder, las_settings, interpolation, int_meth):
+    """Runs command for dtmShell
+
+    Args:
+        folder (str): study site
+        las_settings (str): lastools settings code
+        interpolation (bool): Whether to perform interpolation
+        int_meth (str): Interpolation function
+    """
     run_dtm = subprocess.run(
         [
             "python3",
@@ -35,6 +42,7 @@ if __name__ == "__main__":
     int_meth = cmdargs.intpMethod
 
     if las_setting == "all":
+        # Run dtmShell with all lassettings
         las_settings = [
             "40051",
             "50051",

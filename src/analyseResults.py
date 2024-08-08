@@ -1,6 +1,5 @@
 import time
 import argparse
-import itertools
 import numpy as np
 from matplotlib import pyplot as plt
 from glob import glob
@@ -67,7 +66,7 @@ def analysisCommands():
 
 
 def filePath(folder, las_settings, interpolation):
-    """Function to test file paths and glob"""
+    """Function to find file paths with glob"""
 
     file = f"data/{folder}"
 
@@ -75,16 +74,20 @@ def filePath(folder, las_settings, interpolation):
     return file_list
 
 
-def set_bs_lims(bs_limit, range_var=1, interval=0.1):
-    bs_limits = np.arange(
-        bs_limit - range_var,
-        bs_limit + range_var + interval,
-        interval,
-    )
-    return bs_limits
-
-
 def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_sites):
+    """Read results of dtmShell from CSV, group model performace by processing settings, calculate beam sensitivty and make plots
+
+    Args:
+        folder (str): study site
+        las_settings (str): lassettings used
+        interpolation (str): interpolation method used
+        bs_limit (int): threshold for beam sensitivty calculations
+        tf_outliers (int): include outliers in box plot (1) or not (0)
+        study_sites (lits):list of site names
+
+    Returns:
+        str: name of output csv file
+    """
 
     if folder == "all":
         # read all appropriate dataframes and join into 1
@@ -149,7 +152,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
         # Find mean values
         mean_rmse = group.groupby("CC_bin")["RMSE"].mean().values
 
-        # Ignore N, P combos without any bs thresh < rmse
+        # Ignore N, P combos without any bs_thresh < rmse
         if np.any(mean_rmse <= bs_limit):
             if tf_outliers == 1:
                 if np.all(group["RMSE"] <= bs_limit):
@@ -162,27 +165,25 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
 
             # calculate beam sensitivity from RMSE values within lower 3 quartiles of CC bins
             elif tf_outliers == 0:
-                # Define upper quantile threshold (0.75 for the 75th percentile)
+                # Define upper quantile threshold
                 upper_quantile = 0.75
                 # Calculate the RMSE value at the upper quantile
                 upper_quantile_threshold = group["RMSE"].quantile(upper_quantile)
-                # print("upper q thresh", upper_quantile_threshold)
 
                 # Filter RMSE values below the upper quantile threshold and above the bs_limit
                 filtered_rmse = group[group["RMSE"] <= upper_quantile_threshold]
                 beam_sens = filtered_rmse[filtered_rmse["RMSE"] > bs_limit][
                     "Mean_Canopy_cover"
                 ].min()
-                # print("filt rmse", filtered_rmse)
                 if np.all(filtered_rmse["RMSE"] <= bs_limit):
                     beam_sens = 1
                 else:
-                    # Calculate the minimum Mean_Canopy_cover for the filtered RMSE values
+                    # Calculate the minimum canopy cover for the filtered RMSE values
                     beam_sens = filtered_rmse["Mean_Canopy_cover"].min()
                     print("beam sens", beam_sens)
 
             rmse_mean = np.mean(group["RMSE"])
-            bias_mean = np.mean(abs(group["Bias"]))
+            bias_mean = np.mean(group["Bias"])
 
             # set plot settings
             plt.rcParams["font.family"] = "Times New Roman"
@@ -210,8 +211,6 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
             # Add a horizontal dashed line at rmse=3
             plt.axhline(y=bs_limit, color="grey", linestyle="--", linewidth=1)
 
-            # print("bs", beam_sens)
-            # plt.axvline(x=beam_sens, color="red", linestyle=":", linewidth=1)
             sns.boxplot(
                 x="CC_bin",
                 y="RMSE",
@@ -221,11 +220,10 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
                 color=folder_colour(folder),
             )
 
-            # Fit a line of best fit to the mean rmse values (make function???)
+            # Fit a line of best fit to the mean rmse values
             x = np.arange(len(bin_labels)).reshape(-1, 1)
             y = mean_rmse
 
-            # would cubic model fit better?
             # Filter out NaN values
             mask = ~np.isnan(y)
 
@@ -280,7 +278,7 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
                 Bias=bias_mean,
                 Pixel_count=sum_pixels,
                 nodata_count=sum_nodata,
-                nodata_prop=prop_nodata,
+                nodata_prop=(sum_nodata / sum_pixels) * 100,
             )
 
         else:
@@ -298,6 +296,15 @@ def read_csv(folder, las_settings, interpolation, bs_limit, tf_outliers, study_s
 
 
 def concat_csv(csv_list, las_settings):
+    """Join multiple csv files into one dataframe
+
+    Args:
+        csv_list (list):  csv file names
+        las_settings (str): lassettigns code in file names
+
+    Returns:
+        dataframe: merged files as dataframe
+    """
 
     # file path function
     file_path = f"data/beam_sensitivity/{las_settings}"
@@ -314,19 +321,25 @@ def concat_csv(csv_list, las_settings):
 
 
 def bs_subplots(df, bs_limit, tf_outliers):
+    """Make line plots of beam sensitivty results agaisnt noise/photons
+
+    Args:
+        df (dataframe): beam sensitivity results
+        bs_limit (int): bs threshold
+        tf_outliers (int): outlier inclusion code
+    """
     # filter out old results
     filtered_df = df[df["Noise"] != 5]
     filtered_df = filtered_df[filtered_df["nPhotons"] != 400]
 
-    # Group the data by Noise
+    # Group the data by noise
     noise_groups = filtered_df.groupby("Noise")
 
     # Create subplots
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 6))
-    # fig.tight_layout(rect=(0, 0, 1, 0.9))
-    axes = axes.flatten()  # Flatten the 2D array of axes to 1D for easy iteration
+    axes = axes.flatten()
 
-    # Iterate over each Noise level and corresponding axis
+    # Iterate over each noise level and corresponding axis
     for (noise, group), ax in zip(noise_groups, axes):
         for folder in group["Folder"].unique():
             folder_data = group[group["Folder"] == folder]
@@ -362,77 +375,10 @@ def bs_subplots(df, bs_limit, tf_outliers):
         borderaxespad=0.0,
     )
 
-    # legend.get_frame().set_alpha(1)
-    # legend.get_frame().set_facecolor("white")
-
-    # Adjust the layout to make room for the legend
-    # plt.subplots_adjust(right=0.85)
-    # edit legend to only appear once, to the side
-    # fig.legend(bbox_to_anchor=(1.05, 0), loc="lower left", borderaxespad=0.0)
     outname = f"figures/line_plots/{las_settings}_bs{bs_limit}_o{tf_outliers}.png"
     fig.savefig(outname)
     print(f"Plot saved to saved to {outname}")
     plt.clf()
-
-
-def plot3D(df):
-
-    # set plot settings
-    plt.rcParams["font.family"] = "Times New Roman"
-    plt.rcParams["figure.constrained_layout.use"] = True
-    plt.rcParams["figure.figsize"] = (8, 6)
-    plt.rcParams["legend.fontsize"] = 10
-    plt.rcParams["legend.frameon"] = False
-    plt.rcParams["xtick.labelsize"] = 10
-    plt.rcParams["xtick.major.size"] = 2
-    plt.rcParams["xtick.major.width"] = 0.4
-    plt.rcParams["xtick.major.pad"] = 2
-    plt.rcParams["ytick.labelsize"] = 10
-    plt.rcParams["ytick.major.size"] = 2
-    plt.rcParams["ytick.major.width"] = 0.4
-    plt.rcParams["ytick.major.pad"] = 2
-    plt.rcParams["axes.labelsize"] = 12
-    plt.rcParams["axes.linewidth"] = 0.5
-    plt.rcParams["axes.labelpad"] = 3
-    plt.rcParams["axes.titlesize"] = 14
-    plt.rcParams["lines.linewidth"] = 1
-    plt.rcParams["lines.markersize"] = 4
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
-
-    for site in df["Folder"].unique():
-        site_group = df[df["Folder"] == site]
-        X = site_group["nPhotons"]
-        Y = site_group["Noise"]
-        Z = site_group["beam_sensitivity"]
-        scat = ax.scatter(X, Y, Z, color=folder_colour(site), label=site)
-    ax.set_xlabel("Photons")
-    ax.set_ylabel("Noise")
-    ax.set_zlabel("Beam Sensitivity")
-    ax.legend(loc="upper left")
-
-    plt.title(f"Beam Sensitivity for {las_settings} las settings")
-
-    # create static image
-    fig.savefig(f"figures/scatter_plots/{las_settings}.png")
-
-    # Function to update the view angle
-    def update(frame):
-        ax.view_init(elev=30, azim=frame)
-        return (scat,)
-
-    # Create an animation
-    ani = FuncAnimation(
-        fig, update, frames=np.arange(0, 360, 1), interval=50, blit=True
-    )
-
-    # Save the animation as a GIF
-    ani.save(f"figures/scatter_plots/rotating_{las_settings}.gif", writer="imagemagick")
-    print(f"Gif saved to f 'figures/scatter_plots/rotating_{las_settings}.gif'")
-
-    # close figure
-    fig.close()
 
 
 if __name__ == "__main__":
@@ -446,9 +392,7 @@ if __name__ == "__main__":
     tf_outliers = cmdargs.bs_outlier
 
     csv_paths = []
-    bs_limit_options = set_bs_lims(bs_limit)
 
-    # summary_scatter(3006)
     if site == "all":
         study_sites = [
             "Bonaly",

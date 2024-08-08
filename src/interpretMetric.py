@@ -1,16 +1,15 @@
-import pandas as pd
-import numpy as np
+"""Functions to support DTM shell, extracts values from ALS text files"""
 
-# group imports
-import numpy.ma as ma
+import numpy as np
 import rasterio
 from rasterio.transform import from_origin
 import re
-from plotting import one_plot
 
 
 # Function to read the text file and extract data
 def read_text_file(file_path):
+    """Open text file and extract values"""
+
     coordinates = []
     ground_values = []
     canopy_values = []
@@ -49,6 +48,8 @@ def read_text_file(file_path):
 
 
 def create_geo_array(coordinates, ground_values, resolution=30):
+    """Create array of ALS values at coordinate locations"""
+
     # Convert coordinates and ground values to numpy arrays
     coordinates = np.array(coordinates)
     ground_values = np.array(ground_values, dtype="float32")
@@ -79,6 +80,7 @@ def create_geo_array(coordinates, ground_values, resolution=30):
 
 
 def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
+    """Create geotiff from ALS metric information"""
 
     # Grid built with coords at top left of each pixel
     transform = from_origin(
@@ -105,7 +107,7 @@ def create_tiff(raster_data, bounds, epsg, output_path, resolution=30):
 
 
 def metric_functions(coords, data, outname, epsg):
-    """come back later to tidy this one up"""
+    """Joins als metric functions"""
 
     # make als ground tiff
     raster_data, bounds = create_geo_array(coords, data)

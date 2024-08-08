@@ -64,7 +64,6 @@ class DtmCreation(object):
     """
 
     def __init__(self):
-        """Empty for now"""
         pass
 
     def createDTM(self, folder, las_settings):
@@ -249,12 +248,13 @@ class DtmCreation(object):
 
     def find_nodata(self, ground_elev, canopy_elev):
         """function finds suitable no data value for empty pixels where ground not found.
-        In real data, likely that ground mis-identified as point within canopy, therefore value is average middle of canopy as absolute height
+        In real data, likely that ground mis-identified as point within canopy,
+        therefore value is average middle of canopy as absolute height
 
 
         Args:
             ground_elev (array): sim ground array
-            canopy_elev (array: canopy top height array from ALS
+            canopy_elev (array): canopy top height array from ALS
 
         Returns:
             float: value to be used as no-data for each tile
@@ -275,9 +275,10 @@ class DtmCreation(object):
             array (array): Array containing no-data points (0 value)
             interpolation (bool): Whether to perform interpolation
             int_meth (str): Interpolation function applied to data
+            no_data (float): If interpolation =False, number to fill 0 values
 
         Returns:
-            _type_: _description_
+            array: array with no-data filled
         """
         # count no data pixels
         no_data_count = np.sum(array == 0)
@@ -286,7 +287,7 @@ class DtmCreation(object):
             # Identify 0 values to be replaced
             mask = array != 0
 
-            # grid of indices to perform interpolation at
+            # Grid of indices to perform interpolation at
             x, y = np.indices(array.shape)
 
             # Apply interpolation functions to 0 values
@@ -295,11 +296,11 @@ class DtmCreation(object):
                 array[mask],
                 (x, y),
                 method=f"{int_meth}",
-                fill_value=0,  # Values not interpolated/original data set at 0
+                fill_value=0,
             )
 
             return array_interpolated, no_data_count
-        # If interpolation = False, original array returned
+        # If interpolation = False, no data is approximately half way through canopy
         else:
 
             # replace 0 values with appropriate no data for each tile
@@ -382,6 +383,7 @@ class DtmCreation(object):
                         # Check array contains over 100 waves
                         and np.count_nonzero(simArray) > 100
                     ):
+                        # fill no-data
                         sim_read, noData = self.fill_nodata(
                             simArray, interpolation, int_meth, canopy_middle
                         )
@@ -408,7 +410,6 @@ class DtmCreation(object):
                             als_canopy,
                             image_name,
                             image_title,
-                            folder,
                         )
                         # extract metrics from als arrays
                         mean_cc, stdDev_cc = self.canopy_cover_stats(als_canopy)
@@ -456,25 +457,10 @@ class DtmCreation(object):
                         NoData_count=noData,
                         Data_count=lenData,
                     )
-                    # print(f"rmse is: {rmse}, R² is: {rSquared}, bias: {bias}")
 
                 except ValueError as e:
                     print(f"{sim_tif} ignored due to error: {e}")
                     continue
-
-        """print(
-            len(results["Folder"]),
-            len(results["File"]),
-            len(results["nPhotons"]),
-            len(results["Noise"]),
-            len(results["RMSE"]),
-            len(results["R2"]),
-            len(results["Bias"]),
-            len(results["Mean_Canopy_cover"]),
-            len(results["Std_dev_Canopy_cover"]),
-            len(results["NoData_count"]),
-            len(results["Data_count"]),
-        )"""
 
         resultsDf = pd.DataFrame(results)
         if interpolation == True:
@@ -510,13 +496,13 @@ if __name__ == "__main__":
         ]
         print(f"working on all sites ({study_sites})")
         for site in study_sites:
-            # dtm_creator.createDTM(site, las_settings)
+            dtm_creator.createDTM(site, las_settings)
             dtm_creator.compareDTM(site, interpolation, int_meth, las_settings)
 
     # Run on specified site
     else:
         print(f"working on {study_area}")
-        # dtm_creator.createDTM(study_area, las_settings)
+        dtm_creator.createDTM(study_area, las_settings)
         dtm_creator.compareDTM(study_area, interpolation, int_meth, las_settings)
 
     t = time.perf_counter() - t

@@ -1,69 +1,66 @@
-# dissertation_AH24
+# Dissertation Repository
 
-teastMetric is a text file from GEDIMetric, values set according to defeault command line example. needs edititng, but acts as an example
+*Anna Hill*
 
+Scripts accompanying: 
 
-# Random forest inspiration repo?
-https://github.com/euanmitchell/dissertation/blob/main/randomForestLaSelva.py?fbclid=IwZXh0bgNhZW0CMTAAAR3IsicGlxO0u7OIWCq35MwXTXyCzb2jJgESaRaVXzEb2mNHExP1gpjeoUQ_aem_ATb_y6Izy0lzdKaQKvLxPQaDP53R-VWldfGJ_uvXlyBY8qP6x-h8_AA1GzBH3MA8dZev_HfVS-GaodsUtGLl6WGD
+**Developing the Next Generation of Satellite Lidars: Assessing The Utility of Airborne Lidar Processing Methods for Ground-Finding**
 
-testShell aims to perform automated processing to simulate waveforms
+A complete description of the command line arguments and processing rationale is available in the accompanying technical report
 
-example command:
+<p align="center">
+<img src= "gifs/rotating_nouragues.gif" alt="Rotating image example" width="600px">
+</p>
 
->> python3 src/testShell.py --studyarea all --noise -1 --pcount -1
+# src
 
-python3 src/testShell.py --everywhere 1 --noise -1 --pcount 500
+## testShell.py
 
-python3 src/testShell.py --everywhere 1 --noise 104 --pcount 149
+- Uses the GEDI simulator (Hancock et al., 2019) to generate simulated photon-counting Lidar from discrete-return Airborne Lidar
+- Records information from the Airborne data for later comparision
 
-python3 src/testShell.py --studyarea Bonaly --noise 104 --pcount 149
+can be run with:
 
-python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount 149
-python3 src/testShell.py --studyarea la_selva --noise -1 --pcount 149
-python3 src/testShell.py --studyarea robson_creek --noise -1 --pcount 149
-python3 src/testShell.py --studyarea test --noise -1 --pcount 149
+> python3 src/testShell.py --studyarea all --noise -1 --pcount -1
 
+## dtmShell.py
 
-python3 src/dtmShell.py --studyarea all --lassettings 400505
-python3 src/dtmShell.py --studyarea Bonaly
-python3 src/dtmShell.py --studyarea test
-python3 src/dtmShell.py --studyarea hubbard_brook --lassettings 40051 --interpolate True
-python3 src/dtmShell.py --studyarea la_selva --lassettings 400505
-python3 src/dtmShell.py --studyarea oak_ridge --lassettings 600501 --interpolate True
-python3 src/dtmShell.py --studyarea wind_river --lassettings 40051 --interpolate True --int_method cubic
+- Uses mapLidar from the GEDI simulator to generate DTMs from ground-classified simulated waveforms
+- Compares accuracy of ground finding against Airborne information
 
+can be run with:
 
+> python3 src/dtmShell.py --studyarea all --lassettings 40051 --interpolate True --int_method linear
 
-run 1: hansen vals
-- exc. or
-python3 src/testShell.py --everywhere 1 --noise -1 --pcount 115
-python3 src/testShell.py --studyarea hubbard_brook --noise -1 --pcount -1
-python3 src/testShell.py --studyarea nouragues --noise -1 --pcount 149
-python3 src/testShell.py --studyarea test --noise -1 --pcount -1
+## shellSquared.py
 
-# evening of 12/06
+- Runs dtmShell.py multiple times with different *--lassettings* options
 
-python3 src/testShell.py --everywhere 1 --noise -1 --pcount 149
-python3 src/testShell.py --everywhere 1 --noise 149 --pcount 149
+> python3 src/shellSquared.py --studyarea all --lassettings all --interpolate True --int_method linear
 
-##########
-how many shells is tooooo many:
-python3 src/shellSquared.py --studyarea all --lassettings all
+## analyseResults.py
 
+- Converts accuracy assessment of simulated DTMs into beam sensitivty metrics
+- Generates plots for comparison of results
 
+can be run with:
 
-python3 src/analyseResults.py --studyarea la_selva --lassettings 400505 --interpolation _linear
-python3 src/analyseResults.py --studyarea hubbard_brook --lassettings 400505 --interpolation _linear
+> python3 src/analyseResults.py --studyarea hubbard_brook --lassettings 40051 --interpolation _linear --bs_thresh 4
 
+## slope_cc_plot.py
 
-python3 src/slope_cc_plot.py --studyarea all
+- Reads merged geotiff files of results and compares the relationships between them
+- makes scatter plot matrices of slope, canopy cover, linear interpolated elevation accuracy or cubic interpolated elevation accuracy
 
+can be run with:
 
-python3 src/analyseResults.py --studyarea all --lassettings 40051 --interpolation _cubic
+> python3 src/slope_cc_plot.py --studyarea all –plottype 1
 
+## Additional scripts:
 
-## GLS_planner.py
+**interpretMetric.py**,**plotting.py** and **lasBounds.py** are supporting scripts which cannot be run directly
 
-- Accompanies Hancock et al. (2021)
+# bat
 
->> python3 glsPlanner.py --photDet 149
+- contains the lastools batch processing scripts
+- the commands within these are described in more detail in the Technical report
